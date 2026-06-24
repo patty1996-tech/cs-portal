@@ -91,9 +91,17 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
     : "Please find your experience certificate attached. We appreciate your dedication and wish you every success in your future endeavors.";
 
   try {
-    // Generate real PDF via Google Docs (HtmlService.getBlob() returns HTML, not PDF)
-    var pdfBlob = htmlToPdf(htmlContent, filename);
     var cleanTo = emailTo.trim();
+
+    // Save document to Drive for permanent access link
+    var viewLink = "";
+    try {
+      var folder = DriveApp.getFoldersByName("CS_Portal_Docs");
+      var f = folder.hasNext() ? folder.next() : DriveApp.createFolder("CS_Portal_Docs");
+      var file = f.createFile(filename.replace(".pdf",".html"), htmlContent, "text/html");
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      viewLink = file.getUrl();
+    } catch (e2) { viewLink = ""; }
 
     var htmlBody = '<div style="font-family:Arial,Helvetica,sans-serif;max-width:540px;margin:0 auto;border:1px solid #e2e2e2;border-radius:8px;overflow:hidden;background:#fff">' +
       '<div style="background:#1a1a2e;padding:22px 28px;text-align:center">' +
@@ -107,6 +115,7 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
       '<p style="font-size:11px;color:#777;margin:0 0 3px"><b>Date:</b> ' + today + '</p>' +
       '<p style="font-size:11px;color:#777;margin:0"><b>Issued By:</b> ' + HR_NAME + ', HR Department</p>' +
       '</td></tr></table>' +
+      (viewLink ? '<p style="font-size:12px;color:#555;line-height:1.6;margin:10px 0 0"><b>View Document:</b> <a href="' + viewLink + '" style="color:#c9a84c">Open in Browser</a></p>' : '') +
       '<p style="font-size:12px;color:#999;line-height:1.6;margin:0">For inquiries, contact <a href="mailto:' + HR_EMAIL + '" style="color:#c9a84c;text-decoration:none"><b>' + HR_EMAIL + '</b></a>.</p>' +
       '</div>' +
       '<div style="background:#fafafa;padding:18px 28px;border-top:1px solid #eee;text-align:center">' +
@@ -123,7 +132,6 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
       subject: docLabel + " — Talent Nexus",
       htmlBody: htmlBody,
       body: plainBody,
-      attachments: [pdfBlob],
       name: "Talent Nexus HR",
       replyTo: HR_EMAIL
     });
