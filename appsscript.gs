@@ -47,55 +47,38 @@ function json(obj) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-// ======== RETURN PDF VIA DRIVE (reliable, no size limits, bypasses CORS) ========
+// ======== RETURN PDF AS DIRECT DOWNLOAD (no Drive needed) ========
 function returnPdf(html, filename) {
   try {
-    // Generate PDF
+    // Generate PDF blob
     var blob = HtmlService.createHtmlOutput(html).getBlob()
       .setName(filename).setContentType("application/pdf");
+    var b64 = Utilities.base64Encode(blob.getBytes());
 
-    // Save to Drive with public link
-    var folder = getOrCreateFolder("CS_Portal_PDFs");
-    var file = folder.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    var downloadUrl = "https://drive.google.com/uc?export=download&id=" + file.getId();
-
-    // Auto-cleanup old files after 10 minutes
-    ScriptApp.newTrigger("cleanupOldPdfs")
-      .timeBased()
-      .after(10 * 60 * 1000)
-      .create();
-
-    // Meta refresh redirects the iframe to Drive — browser triggers download natively
+    // Return an HTML page that auto-downloads the PDF via JavaScript
+    // No CORS issues since the new tab is on script.google.com origin
     return HtmlService.createHtmlOutput(
-      '<!DOCTYPE html><html><head>' +
-      '<meta http-equiv="refresh" content="0;url=' + downloadUrl + '">' +
-      '</head><body><p>Your PDF is downloading. If not, <a href="' + downloadUrl + '">click here</a>.</p></body></html>'
-    ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+      '<!DOCTYPE html><html><head><title>Download</title></head><body><script>' +
+      'var b64="' + b64 + '";' +
+      'var bytes=atob(b64);' +
+      'var arr=new Uint8Array(bytes.length);' +
+      'for(var i=0;i<bytes.length;i++)arr[i]=bytes.charCodeAt(i);' +
+      'var blob=new Blob([arr],{type:"application/pdf"});' +
+      'var url=URL.createObjectURL(blob);' +
+      'var a=document.createElement("a");' +
+      'a.href=url;a.download="' + filename + '";' +
+      'document.body.appendChild(a);a.click();' +
+      'document.body.removeChild(a);' +
+      'URL.revokeObjectURL(url);' +
+      'window.close();' +
+      '</script></body></html>'
+    );
 
   } catch (e) {
     return HtmlService.createHtmlOutput(
       '<!DOCTYPE html><html><body><h3>Error generating PDF: ' + esc(e.toString()) + '</h3></body></html>'
-    ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    );
   }
-}
-
-function getOrCreateFolder(name) {
-  var folders = DriveApp.getFoldersByName(name);
-  if (folders.hasNext()) return folders.next();
-  return DriveApp.createFolder(name);
-}
-
-function cleanupOldPdfs() {
-  try {
-    var folder = getOrCreateFolder("CS_Portal_PDFs");
-    var files = folder.getFiles();
-    var cutoff = new Date(Date.now() - 15 * 60 * 1000); // 15 min ago
-    while (files.hasNext()) {
-      var f = files.next();
-      if (f.getDateCreated() < cutoff) f.setTrashed(true);
-    }
-  } catch (e) { }
 }
 
 // ======== EMAIL (called after PDF generation) ========
