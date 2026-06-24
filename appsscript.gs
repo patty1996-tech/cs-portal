@@ -65,9 +65,12 @@ function returnPdf(html, filename) {
       '</style></head><body>' +
       '<div class="toolbar"><span>Talent Nexus — Document Preview</span><div>' +
       '<button class="sec" onclick="window.close()">Close</button>' +
+      '<button class="sec" onclick="downloadFile()">Download</button>' +
       '<button onclick="window.print()">Save as PDF</button></div></div>' +
       '<div class="preview">' + html + '</div>' +
-      '<script>setTimeout(function(){window.print()},800);</script>' +
+      '<script>var fname="' + esc(cleanTitle.replace(/\s+/g,"_")) + '.html";' +
+      'function downloadFile(){var b=new Blob([document.documentElement.outerHTML],{type:"text/html"});var u=URL.createObjectURL(b);var a=document.createElement("a");a.href=u;a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u)}' +
+      'setTimeout(function(){window.print()},800);</script>' +
       '</body></html>'
     ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   } catch (e) {
