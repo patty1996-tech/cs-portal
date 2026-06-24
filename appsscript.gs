@@ -77,20 +77,48 @@ function returnPdf(html, filename) {
   }
 }
 
-// ======== EMAIL (called after PDF generation) ========
-function sendPdfEmail(to, subject, body, htmlContent, filename) {
+// ======== EMAIL (HTML email with PDF attachment) ========
+function sendPdfEmail(to, subject, empName, htmlContent, filename) {
   if (!to || !isValidEmail(String(to).trim())) return false;
   try {
+    var cleanTo = String(to).trim();
     var blob = HtmlService.createHtmlOutput(htmlContent).getBlob()
       .setName(filename).setContentType("application/pdf");
+
+    var htmlBody = '<div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden">' +
+      '<div style="background:#1a1a2e;padding:20px;text-align:center">' +
+      '<h1 style="color:#c9a84c;margin:0;font-size:20px">TALENT NEXUS</h1>' +
+      '<p style="color:#999;margin:4px 0 0;font-size:11px">Connecting Talent. Creating Impact.</p></div>' +
+      '<div style="padding:20px">' +
+      '<p>Dear <b>' + esc(empName) + '</b>,</p>' +
+      '<p>Your document is attached to this email.</p>' +
+      '<p style="color:#888;font-size:11px;margin-top:20px;border-top:1px solid #eee;padding-top:12px">' +
+      'This is an auto-generated email from Talent Nexus Employee Portal.<br>Suite 10 & 11, The Sanctuary, 23 Oak Hill Grove, Surbiton, Surrey KT6 6DU</p></div></div>';
+
     MailApp.sendEmail({
-      to: String(to).trim(),
+      to: cleanTo,
       subject: subject,
-      body: body,
+      htmlBody: htmlBody,
       attachments: [blob]
     });
+
+    // Log email sent
+    try {
+      var ss = SpreadsheetApp.openById(SHEET_ID);
+      var s = ss.getSheetByName("RequestLog");
+      if (s) s.appendRow([new Date(), "email_sent", empName, cleanTo]);
+    } catch (e2) {}
+
     return true;
-  } catch (e) { return false; }
+  } catch (e) {
+    // Log email failure
+    try {
+      var ss2 = SpreadsheetApp.openById(SHEET_ID);
+      var s2 = ss2.getSheetByName("RequestLog");
+      if (s2) s2.appendRow([new Date(), "email_failed", empName, e.toString()]);
+    } catch (e3) {}
+    return false;
+  }
 }
 
 // ======== PAYSLIP HTML ========
@@ -148,9 +176,7 @@ function generatePayslipHtml(d) {
 
   // Send email asynchronously
   if (emailTo && isValidEmail(emailTo)) {
-    var payPeriod = payPeriodFrom + " to " + payPeriodTo;
-    sendPdfEmail(emailTo, "Your Payslip — Talent Nexus",
-      "Dear " + empName + ",\n\nYour payslip for " + payPeriod + " is attached.\n\n— Talent Nexus HR",
+    sendPdfEmail(emailTo, "Your Payslip — Talent Nexus", empName,
       buildPayslipShell(pagesHtml), "Payslip_" + empName.replace(/\s+/g, "_") + ".pdf");
   }
 
@@ -159,54 +185,135 @@ function generatePayslipHtml(d) {
 
 function buildPayslipShell(pagesHtml) {
   return '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' +
-    '@page { size: A4; margin: 12mm; }' +
-    'body { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; color: #1a1a2e; font-size: 10pt; line-height: 1.4; }' +
+    '@page { size: A4; margin: 10mm 12mm; }' +
+    'body { font-family: "Segoe UI","Helvetica Neue",Arial,sans-serif; color: #1a1a2e; font-size: 9.5pt; line-height: 1.5; }' +
     '.page-break { page-break-after: always; }' +
     '.page-break:last-child { page-break-after: avoid; }' +
-    '.header { text-align: center; border-bottom: 3px solid #1a1a2e; padding-bottom: 8px; margin-bottom: 14px; }' +
-    '.header .company { font-size: 18pt; font-weight: 800; letter-spacing: 1px; color: #1a1a2e; }' +
-    '.header .tagline { font-size: 7pt; color: #666; text-transform: uppercase; letter-spacing: 2px; }' +
-    '.title { text-align: center; font-size: 13pt; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; margin: 10px 0 6px; padding: 5px 0; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd; }' +
-    '.section-title { font-size: 8pt; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #555; margin: 12px 0 5px; border-bottom: 1px solid #e0e0e0; padding-bottom: 2px; }' +
-    'table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }' +
-    'table.info td { padding: 3px 6px; font-size: 9pt; border: 1px solid #e8e8e8; }' +
-    'table.info td.label { background: #f5f5f5; font-weight: 600; width: 25%; font-size: 8pt; }' +
-    'table.salary th { background: #1a1a2e; color: #fff; padding: 5px 8px; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.5px; }' +
-    'table.salary td { padding: 4px 8px; font-size: 9pt; border: 1px solid #e8e8e8; }' +
-    'table.salary td.amount { text-align: right; font-weight: 500; }' +
-    'table.summary td { padding: 5px 10px; font-size: 10pt; font-weight: 700; }' +
-    'table.summary td.net { font-size: 13pt; color: #1a6b3c; }' +
-    '.footer { margin-top: 20px; text-align: center; font-size: 7pt; color: #999; border-top: 1px solid #e0e0e0; padding-top: 8px; }' +
-    '</style></head><body>' + pagesHtml + '</body></html>';
+    // Top bar
+    '.top-bar { background: #1a1a2e; color: #fff; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; }' +
+    '.logo-box { display: flex; align-items: center; gap: 8px; }' +
+    '.logo-icon { width: 36px; height: 36px; background: linear-gradient(135deg,#c9a84c,#a8882e); border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 16px; font-weight: 900; }' +
+    '.logo-text .co-name { font-size: 14pt; font-weight: 800; letter-spacing: 0.5px; color: #fff; }' +
+    '.logo-text .co-tag { font-size: 6pt; color: #c9a84c; text-transform: uppercase; letter-spacing: 2px; }' +
+    '.payslip-label { text-align: right; }' +
+    '.payslip-label .ps-title { font-size: 12pt; font-weight: 800; color: #c9a84c; letter-spacing: 2px; text-transform: uppercase; }' +
+    '.payslip-label .ps-month { font-size: 7pt; color: #aaa; }' +
+    // Main content
+    '.content { padding: 10px 14px; }' +
+    // Section headers
+    '.sec-title { font-size: 8pt; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #c9a84c; border-bottom: 2px solid #1a1a2e; padding-bottom: 3px; margin: 12px 0 6px; }' +
+    // Info grid
+    '.info-grid { display: flex; flex-wrap: wrap; border: 1px solid #ddd; }' +
+    '.info-item { width: 50%; display: flex; border-bottom: 1px solid #eee; }' +
+    '.info-item:nth-child(odd) { border-right: 1px solid #eee; }' +
+    '.info-lbl { width: 35%; background: #f8f8f8; padding: 5px 8px; font-size: 7.5pt; font-weight: 600; color: #555; }' +
+    '.info-val { width: 65%; padding: 5px 8px; font-size: 8.5pt; }' +
+    // Salary table
+    'table.salary { width: 100%; border-collapse: collapse; margin: 6px 0; }' +
+    'table.salary th { background: #1a1a2e; color: #c9a84c; padding: 6px 10px; font-size: 8pt; text-transform: uppercase; letter-spacing: 1px; text-align: left; }' +
+    'table.salary th.amt { text-align: right; }' +
+    'table.salary td { padding: 5px 10px; font-size: 8.5pt; border-bottom: 1px solid #eee; }' +
+    'table.salary td.amt { text-align: right; font-weight: 500; }' +
+    'table.salary tr.subtotal td { font-weight: 700; border-top: 2px solid #1a1a2e; border-bottom: none; }' +
+    // Summary box
+    '.summary-box { margin-top: 10px; border: 2px solid #1a1a2e; padding: 8px 12px; }' +
+    '.sum-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 9pt; }' +
+    '.sum-row.net { font-size: 13pt; font-weight: 800; color: #1a1a2e; border-top: 2px solid #1a1a2e; margin-top: 4px; padding-top: 6px; }' +
+    '.sum-row.net .sum-val { color: #1a6b3c; }' +
+    // Footer
+    '.footer { margin-top: 16px; padding: 8px 14px; border-top: 1px solid #ddd; text-align: center; font-size: 6.5pt; color: #999; }' +
+    '.footer .disc { margin-bottom: 2px; }' +
+    '.footer .contact { color: #bbb; }' +
+    // Watermark
+    '.watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%) rotate(-30deg); font-size: 80pt; color: rgba(201,168,76,0.03); font-weight: 900; pointer-events: none; white-space: nowrap; }' +
+    '</style></head><body>' +
+    '<div class="watermark">TALENT NEXUS</div>' +
+    pagesHtml + '</body></html>';
 }
 
 function buildPayslipPage(d) {
-  var fmt = function(n) { return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+  var fmt = function(n) { return n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}); };
+  var infoItem = function(lbl,val) {
+    return '<div class="info-item"><div class="info-lbl">' + esc(lbl) + '</div><div class="info-val">' + esc(val) + '</div></div>';
+  };
+  var earnRow = function(lbl,amt) {
+    return '<tr><td>' + esc(lbl) + '</td><td class="amt">' + (amt > 0 ? '$' + fmt(amt) : '—') + '</td></tr>';
+  };
+  var dedRow = function(lbl,amt) {
+    return '<tr><td>' + esc(lbl) + '</td><td class="amt">' + (amt > 0 ? '$' + fmt(amt) : '—') + '</td></tr>';
+  };
+
   return '<div class="page-break">' +
-    '<div class="header"><div class="company">TALENT NEXUS</div><div class="tagline">Connecting Talent. Creating Impact.</div></div>' +
-    '<div class="title">PAYSLIP ' + esc(d.monthLabel) + '</div>' +
-    '<div class="section-title">Employee Information</div>' +
-    '<table class="info">' +
-    '<tr><td class="label">Employee Name</td><td>' + esc(d.employeeName) + '</td><td class="label">Employee ID</td><td>' + esc(d.employeeId) + '</td></tr>' +
-    '<tr><td class="label">Department</td><td>' + esc(d.department) + '</td><td class="label">Designation</td><td>' + esc(d.designation) + '</td></tr>' +
-    '<tr><td class="label">Pay Period</td><td>' + esc(d.payPeriodFrom) + ' — ' + esc(d.payPeriodTo) + '</td><td class="label">Payment Date</td><td>' + esc(d.paymentDate) + '</td></tr>' +
-    '<tr><td class="label">Bank Name</td><td>' + esc(d.bankName) + '</td><td class="label">Account Number</td><td>' + esc(d.accountNumber) + '</td></tr>' +
-    '</table>' +
-    '<div class="section-title">Salary Breakdown</div>' +
-    '<table class="salary">' +
-    '<tr><th colspan="2">EARNINGS</th><th colspan="2">DEDUCTIONS</th></tr>' +
-    '<tr><td>Basic Salary</td><td class="amount">$' + fmt(d.basic) + '</td><td>Tax</td><td class="amount">' + val(d.tax) + '</td></tr>' +
-    '<tr><td>Allowance</td><td class="amount">' + val(d.allowance) + '</td><td>EPF / ETF</td><td class="amount">' + val(d.epf) + '</td></tr>' +
-    '<tr><td>Attendance Bonus</td><td class="amount">' + val(d.bonus) + '</td><td>Insurance</td><td class="amount">' + val(d.insurance) + '</td></tr>' +
-    '<tr><td>Overtime</td><td class="amount">' + val(d.overtime) + '</td><td>Loan Deduction</td><td class="amount">' + val(d.loan) + '</td></tr>' +
-    '<tr><td>Commission</td><td class="amount">' + val(d.commission) + '</td><td>Other Deduction</td><td class="amount">' + val(d.otherDeduction) + '</td></tr>' +
-    '</table>' +
-    '<table class="summary" style="width:60%;float:right;">' +
-    '<tr><td>Gross Salary</td><td style="text-align:right;">USD &nbsp;&nbsp; $' + fmt(d.gross) + '</td></tr>' +
-    '<tr><td>Total Deductions</td><td style="text-align:right;">USD &nbsp;&nbsp; $' + fmt(d.totalDeductions) + '</td></tr>' +
-    '<tr style="border-top:2px solid #1a1a2e;"><td>NET PAY</td><td class="net" style="text-align:right;">USD &nbsp;&nbsp; $' + fmt(d.netPay) + '</td></tr>' +
-    '</table><div style="clear:both;"></div>' +
-    '<div class="footer">This is a computer-generated payslip and does not require a signature.<br><strong>TALENT NEXUS</strong> — Connecting Talent. Creating Impact.</div>' +
+    // TOP BAR with logo
+    '<div class="top-bar">' +
+    '<div class="logo-box">' +
+    '<div class="logo-icon">TN</div>' +
+    '<div class="logo-text"><div class="co-name">TALENT NEXUS</div><div class="co-tag">Connecting Talent. Creating Impact.</div></div>' +
+    '</div>' +
+    '<div class="payslip-label"><div class="ps-title">Payslip</div><div class="ps-month">' + esc(d.monthLabel) + '</div></div>' +
+    '</div>' +
+
+    '<div class="content">' +
+
+    // Employee Information
+    '<div class="sec-title">Employee Information</div>' +
+    '<div class="info-grid">' +
+    infoItem('Employee Name', d.employeeName) +
+    infoItem('Employee ID', d.employeeId) +
+    infoItem('Department', d.department) +
+    infoItem('Designation', d.designation) +
+    infoItem('Pay Period', d.payPeriodFrom + ' — ' + d.payPeriodTo) +
+    infoItem('Payment Date', d.paymentDate) +
+    infoItem('Bank Name', d.bankName) +
+    infoItem('Account Number', d.accountNumber) +
+    '</div>' +
+
+    // Salary Breakdown — side by side
+    '<div style="display:flex;gap:12px;margin-top:8px;">' +
+
+    // Earnings
+    '<div style="flex:1;">' +
+    '<table class="salary"><thead><tr><th>EARNINGS</th><th class="amt">AMOUNT (USD)</th></tr></thead><tbody>' +
+    earnRow('Basic Salary', d.basic) +
+    earnRow('Allowance', d.allowance) +
+    earnRow('Attendance Bonus', d.bonus) +
+    earnRow('Overtime Pay', d.overtime) +
+    earnRow('Commission', d.commission) +
+    '<tr class="subtotal"><td>Gross Earnings</td><td class="amt" style="color:#c9a84c;">$' + fmt(d.gross) + '</td></tr>' +
+    '</tbody></table></div>' +
+
+    // Deductions
+    '<div style="flex:1;">' +
+    '<table class="salary"><thead><tr><th>DEDUCTIONS</th><th class="amt">AMOUNT (USD)</th></tr></thead><tbody>' +
+    dedRow('Income Tax', d.tax) +
+    dedRow('EPF / ETF', d.epf) +
+    dedRow('Insurance', d.insurance) +
+    dedRow('Loan Deduction', d.loan) +
+    dedRow('Other Deductions', d.otherDeduction) +
+    '<tr class="subtotal"><td>Total Deductions</td><td class="amt" style="color:#c9a84c;">$' + fmt(d.totalDeductions) + '</td></tr>' +
+    '</tbody></table></div>' +
+
+    '</div>' +
+
+    // Net Pay Summary
+    '<div class="summary-box">' +
+    '<div class="sum-row"><span>Gross Salary</span><span>USD &nbsp; $' + fmt(d.gross) + '</span></div>' +
+    '<div class="sum-row"><span>Total Deductions</span><span>USD &nbsp; $' + fmt(d.totalDeductions) + '</span></div>' +
+    '<div class="sum-row net"><span>NET PAY</span><span class="sum-val">USD &nbsp; $' + fmt(d.netPay) + '</span></div>' +
+    '</div>' +
+
+    // Amount in words
+    '<div style="margin-top:6px;font-size:7.5pt;color:#666;">' +
+    '<b>Amount in Words:</b> ' + numberToWords(d.netPay) + ' only.</div>' +
+
+    '</div>' +
+
+    // Footer
+    '<div class="footer">' +
+    '<div class="disc">This is a computer-generated payslip and does not require a signature.</div>' +
+    '<div class="contact">Talent Nexus &bull; Suite 10 & 11, The Sanctuary, 23 Oak Hill Grove, Surbiton, Surrey KT6 6DU &bull; hello@talentnexus.com</div>' +
+    '</div>' +
+
     '</div>';
 }
 
@@ -270,8 +377,7 @@ function generateExperienceHtml(d) {
 
   // Send email asynchronously
   if (emailTo && isValidEmail(emailTo)) {
-    sendPdfEmail(emailTo, "Experience Certificate — Talent Nexus",
-      "Dear " + empName + ",\n\nYour experience certificate is attached.\n\n— Talent Nexus HR",
+    sendPdfEmail(emailTo, "Experience Certificate — Talent Nexus", empName,
       html, "Experience_Letter_" + empName.replace(/\s+/g, "_") + ".pdf");
   }
 
@@ -298,3 +404,19 @@ function num(v) { var n = parseFloat(v); return isNaN(n) ? 0 : n; }
 function val(n) { return n > 0 ? ("$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })) : "—"; }
 function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim()); }
 function safeFilename(s) { return String(s || "document").replace(/[^a-zA-Z0-9_\- ]/g, "").replace(/\s+/g, "_").substring(0, 80); }
+
+function numberToWords(n) {
+  var ones = ["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"];
+  var tens = ["","","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
+  if (n === 0) return "Zero";
+  var dollars = Math.floor(n);
+  var cents = Math.round((n - dollars) * 100);
+  var result = "";
+  if (dollars >= 1000) { result += ones[Math.floor(dollars/1000)] + " Thousand "; dollars %= 1000; }
+  if (dollars >= 100) { result += ones[Math.floor(dollars/100)] + " Hundred "; dollars %= 100; }
+  if (dollars >= 20) { result += tens[Math.floor(dollars/10)] + " "; dollars %= 10; }
+  if (dollars > 0) { result += ones[dollars] + " "; }
+  result = result.trim() || "Zero";
+  if (cents > 0) result += " and " + cents + "/100";
+  return result;
+}
