@@ -23,13 +23,14 @@ function doPost(e) {
 
     if (action === "generate_payslip") {
       var html = generatePayslipHtml(d);
-      var filename = "Payslip_" + safeFilename(d.employeeName || "Employee") + ".pdf";
+      var period = str(d.payPeriodFrom).replace(/[^a-zA-Z0-9]/g,"_") || "Monthly";
+      var filename = safeFilename(d.employeeName || "Employee") + "_" + period + "_Payslip.pdf";
       sendEmailIfRequested(d, html, filename, "payslip");
       return returnPdf(html, filename);
     }
     if (action === "generate_experience") {
       var html2 = generateExperienceHtml(d);
-      var filename2 = "Experience_Letter_" + safeFilename(d.employeeName || "Employee") + ".pdf";
+      var filename2 = safeFilename(d.employeeName || "Employee") + "_Experience_Letter.pdf";
       sendEmailIfRequested(d, html2, filename2, "experience");
       return returnPdf(html2, filename2);
     }
