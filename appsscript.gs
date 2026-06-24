@@ -66,21 +66,9 @@ function returnPdf(html, filename) {
       '<div class="toolbar"><span>Talent Nexus — Document Preview</span><div>' +
       '<button class="sec" onclick="window.close()">Close</button>' +
       '<button onclick="window.print()">Save as PDF</button></div></div>' +
-      '<div class="preview" id="previewContent">' + html + '</div>' +
-      '<script>' +
-      'var cleanTitle="' + esc(cleanTitle) + '";' +
-      'setTimeout(function(){' +
-      '  var c=document.getElementById("previewContent").innerHTML;' +
-      '  var h="<!DOCTYPE html><html><head><meta charset=UTF-8><title>"+cleanTitle+"</title>"+' +
-      '    "<style>@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{size:A4;margin:0}}"' +
-      '    +"body{font-family:Segoe UI,Helvetica,Arial,sans-serif;color:#1a1a2e;font-size:9pt;line-height:1.45;margin:0;background:#fff}</style>"' +
-      '    +"</head><body>"+c+"</body></html>";' +
-      '  var b=new Blob([h],{type:"text/html"});' +
-      '  var u=URL.createObjectURL(b);' +
-      '  location.replace(u);' +
-      '  setTimeout(function(){window.print()},500);' +
-      '},800);' +
-      '</script></body></html>'
+      '<div class="preview">' + html + '</div>' +
+      '<script>setTimeout(function(){window.print()},800);</script>' +
+      '</body></html>'
     ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   } catch (e) {
     return HtmlService.createHtmlOutput(
@@ -103,8 +91,8 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
     : "Please find your experience certificate attached. We appreciate your dedication and wish you every success in your future endeavors.";
 
   try {
-    var blob = HtmlService.createHtmlOutput(htmlContent).getBlob()
-      .setName(filename).setContentType("application/pdf");
+    // Generate real PDF via Google Docs (HtmlService.getBlob() returns HTML, not PDF)
+    var pdfBlob = htmlToPdf(htmlContent, filename);
     var cleanTo = emailTo.trim();
 
     var htmlBody = '<div style="font-family:Arial,Helvetica,sans-serif;max-width:540px;margin:0 auto;border:1px solid #e2e2e2;border-radius:8px;overflow:hidden;background:#fff">' +
@@ -135,7 +123,7 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
       subject: docLabel + " — Talent Nexus",
       htmlBody: htmlBody,
       body: plainBody,
-      attachments: [blob],
+      attachments: [pdfBlob],
       name: "Talent Nexus HR",
       replyTo: HR_EMAIL
     });
@@ -420,6 +408,29 @@ function str(v) { return String(v||"").trim(); }
 function num(v) { var n=parseFloat(v); return isNaN(n)?0:n; }
 function isValidEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e).trim()); }
 function safeFilename(s) { return String(s||"document").replace(/[^a-zA-Z0-9_\- ]/g,"").replace(/\s+/g,"_").substring(0,80); }
+
+function htmlToPdf(htmlContent, filename) {
+  // Convert HTML to real PDF using Google Docs export
+  try {
+    // Strip HTML tags for clean text
+    var plainText = htmlContent.replace(/<style[^>]*>[\s\S]*?<\/style>/gi,"")
+      .replace(/<[^>]+>/g," ").replace(/&amp;/g,"&").replace(/&lt;/g,"<")
+      .replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&bull;/g,"•")
+      .replace(/\s+/g," ").trim();
+    // Create temp doc, insert text, export as PDF
+    var doc = DocumentApp.create("temp_pdf_" + new Date().getTime());
+    doc.getBody().setText(plainText);
+    doc.saveAndClose();
+    var pdfBlob = doc.getAs("application/pdf").setName(filename);
+    // Clean up temp doc
+    DriveApp.getFileById(doc.getId()).setTrashed(true);
+    return pdfBlob;
+  } catch (e) {
+    // Fallback: return HTML as blob (will open in browser)
+    return HtmlService.createHtmlOutput(htmlContent).getBlob()
+      .setName(filename.replace(".pdf",".html")).setContentType("text/html");
+  }
+}
 
 function parseDateFlex(s) {
   // Supports DD/MM/YY, DD-MM-YYYY, YYYY-MM-DD, etc.
