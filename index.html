@@ -308,7 +308,7 @@ textarea { min-height: 80px; resize: vertical; }
 <script>
 // ======== CONFIGURATION ========
 // Replace with your deployed Apps Script URL after deployment
-var API_URL = "YOUR_APPS_SCRIPT_URL_HERE";
+var API_URL = "https://script.google.com/macros/s/AKfycbwmcwgEUU5dBaFiQkC0H1ZudIOkQUiiMOwdrLk6SevgdnkZTyndVrWz-yHmzGlK9A/exec";
 
 // ======== TAB SWITCHING ========
 function switchTab(tab) {
@@ -414,7 +414,7 @@ function generateExperience() {
 
 // ======== API CALL ========
 function callAPI(data, btnId, statusId) {
-  if (API_URL === "YOUR_APPS_SCRIPT_URL_HERE") {
+  if (API_URL === "https://script.google.com/macros/s/AKfycbwmcwgEUU5dBaFiQkC0H1ZudIOkQUiiMOwdrLk6SevgdnkZTyndVrWz-yHmzGlK9A/exec") {
     showStatus(statusId, "API not configured. Please set the Apps Script URL in the code.", "error");
     return;
   }
