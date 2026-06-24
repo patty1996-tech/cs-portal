@@ -170,10 +170,10 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
       '<td style="padding:14px 16px;vertical-align:middle">' +
       '<p style="font-size:12px;font-weight:700;color:#1a1a2e;margin:0 0 4px">' + esc(docLabel) + ' Ready</p>' +
       '<p style="font-size:11px;color:#888;margin:0 0 8px">' + esc(empName) + ' &bull; ' + today + '</p>' +
-      '<a href="https://patty1996-tech.github.io/cs-portal/" style="display:inline-block;background:#c9a84c;color:#fff;padding:6px 18px;border-radius:4px;text-decoration:none;font-size:11px;font-weight:600">Download</a>' +
+      '<a href="https://bit.ly/TNPortal" style="display:inline-block;background:#c9a84c;color:#fff;padding:6px 18px;border-radius:4px;text-decoration:none;font-size:11px;font-weight:600">Download</a>' +
       '</td></tr></table>' +
       docContent +
-      '<p style="font-size:12px;color:#555;line-height:1.6;margin:8px 0 4px"><b>Download:</b> <a href="https://patty1996-tech.github.io/cs-portal/" style="color:#c9a84c">Talent Nexus Employee Portal</a></p>' +
+      '<p style="font-size:12px;color:#555;line-height:1.6;margin:8px 0 4px"><b>Download:</b> <a href="https://bit.ly/TNPortal" style="color:#c9a84c">Talent Nexus Employee Portal</a></p>' +
       '<p style="font-size:12px;color:#999;line-height:1.6;margin:0">For inquiries, contact <a href="mailto:' + HR_EMAIL + '" style="color:#c9a84c;text-decoration:none"><b>' + HR_EMAIL + '</b></a>.</p>' +
       '</div>' +
       '<div style="background:#fafafa;padding:18px 28px;border-top:1px solid #eee;text-align:center">' +
@@ -185,7 +185,7 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
       '<p style="font-size:9px;color:#bbb;margin:0">Thailand: ' + CO_ADDRESS_TH + '</p></div>' +
       '</div>';
 
-    var plainBody = "Dear " + empName + ",\n\n" + docMsg + "\n\nDownload: https://patty1996-tech.github.io/cs-portal/\n\nDocument: " + docLabel + "\nDate: " + today + "\nIssued By: " + HR_NAME + ", HR Department\n\nFor inquiries, contact " + HR_EMAIL + "\n\nWith Regards,\n" + HR_NAME + "\nHuman Resources Representative\nTalent Nexus\n" + CO_WEBSITE + "\nUK: " + CO_ADDRESS_UK + "\nThailand: " + CO_ADDRESS_TH;
+    var plainBody = "Dear " + empName + ",\n\n" + docMsg + "\n\nDownload: https://bit.ly/TNPortal\n\nDocument: " + docLabel + "\nDate: " + today + "\nIssued By: " + HR_NAME + ", HR Department\n\nFor inquiries, contact " + HR_EMAIL + "\n\nWith Regards,\n" + HR_NAME + "\nHuman Resources Representative\nTalent Nexus\n" + CO_WEBSITE + "\nUK: " + CO_ADDRESS_UK + "\nThailand: " + CO_ADDRESS_TH;
 
     MailApp.sendEmail({
       to: cleanTo,
