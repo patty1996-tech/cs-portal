@@ -211,7 +211,7 @@ function payslipShell(pages) {
     '</style></head><body>' + pages + '</body></html>';
 }
 
-function payslipPage(nm,id,dp,ds,pf,pt,pd,bk,ac,ba,al,bo,ot,cm,tx,ep,in,ln,oh,gr,td,nt,mlbl) {
+function payslipPage(nm,id,dp,ds,pf,pt,pd,bk,ac,ba,al,bo,ot,cm,tx,ep,ins,ln,oh,gr,td,nt,mlbl) {
   var fmt = function(v){return v.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});};
   var amt = function(v){return v>0?"$"+fmt(v):"—";};
   var row = function(l,v){return '<tr><td>'+esc(l)+'</td><td class="rt">'+v+'</td></tr>';};
@@ -247,7 +247,7 @@ function payslipPage(nm,id,dp,ds,pf,pt,pd,bk,ac,ba,al,bo,ot,cm,tx,ep,in,ln,oh,gr
     '</tbody></table>' +
     '</td><td width="50%" style="vertical-align:top;padding-left:6px">' +
     '<table class="stbl"><thead><tr><th>DEDUCTIONS</th><th class="rt">AMOUNT (USD)</th></tr></thead><tbody>' +
-    row('Income Tax',amt(tx)) + row('EPF / ETF',amt(ep)) + row('Insurance',amt(in)) +
+    row('Income Tax',amt(tx)) + row('EPF / ETF',amt(ep)) + row('Insurance',amt(ins)) +
     row('Loan Deduction',amt(ln)) + row('Other Deductions',amt(oh)) +
     '<tr class="sub"><td>Total Deductions</td><td class="rt">$'+fmt(td)+'</td></tr>' +
     '</tbody></table>' +
