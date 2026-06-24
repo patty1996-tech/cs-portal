@@ -66,9 +66,21 @@ function returnPdf(html, filename) {
       '<div class="toolbar"><span>Talent Nexus — Document Preview</span><div>' +
       '<button class="sec" onclick="window.close()">Close</button>' +
       '<button onclick="window.print()">Save as PDF</button></div></div>' +
-      '<div class="preview">' + html + '</div>' +
-      '<script>setTimeout(function(){window.print()},800);</script>' +
-      '</body></html>'
+      '<div class="preview" id="previewContent">' + html + '</div>' +
+      '<script>' +
+      'var cleanTitle="' + esc(cleanTitle) + '";' +
+      'setTimeout(function(){' +
+      '  var c=document.getElementById("previewContent").innerHTML;' +
+      '  var h="<!DOCTYPE html><html><head><meta charset=UTF-8><title>"+cleanTitle+"</title>"+' +
+      '    "<style>@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{size:A4;margin:0}}"' +
+      '    +"body{font-family:Segoe UI,Helvetica,Arial,sans-serif;color:#1a1a2e;font-size:9pt;line-height:1.45;margin:0;background:#fff}</style>"' +
+      '    +"</head><body>"+c+"</body></html>";' +
+      '  var b=new Blob([h],{type:"text/html"});' +
+      '  var u=URL.createObjectURL(b);' +
+      '  location.replace(u);' +
+      '  setTimeout(function(){window.print()},500);' +
+      '},800);' +
+      '</script></body></html>'
     ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   } catch (e) {
     return HtmlService.createHtmlOutput(
