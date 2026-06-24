@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Talent Nexus — Employee Portal</title>
+<style>
+:root {
+  --bg: #08080c; --s: #0d0d14; --c: #111118; --h: #161622; --b: #1f1f2e;
+  --bl: #2a2a3c; --t: #e8e8f0; --t2: #9a9ab2; --tm: #62627a;
+  --gold: #c9a84c; --gold2: #a8882e; --gold-l: #d4b85e;
+  --g: #10b981; --r: #ef4444; --rd: 8px; --rd2: 12px; --rd3: 16px;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+@keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+body {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+  background: var(--bg); color: var(--t); min-height: 100vh; font-size: 13px;
+  -webkit-font-smoothing: antialiased; letter-spacing: -0.1px;
+  background-image:
+    radial-gradient(circle at 20% 10%, rgba(201,168,76,0.03), transparent 50%),
+    radial-gradient(circle at 80% 90%, rgba(201,168,76,0.02), transparent 50%);
+}
+
+/* HEADER */
+.header {
+  background: var(--s); border-bottom: 1px solid var(--b); padding: 0 20px;
+  height: 52px; display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 10;
+}
+.header-l { display: flex; align-items: center; gap: 10px; }
+.logo {
+  width: 30px; height: 30px; border-radius: 6px;
+  background: linear-gradient(135deg, var(--gold), var(--gold2));
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-weight: 800; font-size: 11px;
+}
+.header-l h1 { font-size: 13px; font-weight: 700; }
+.header-l .sub { font-size: 9px; color: var(--tm); font-weight: 500; }
+.header-r { font-size: 9px; color: var(--t2); }
+
+/* CONTAINER */
+.container { max-width: 720px; margin: 0 auto; padding: 20px 16px 40px; }
+
+/* TABS */
+.tabs { display: flex; gap: 2px; margin-bottom: 20px; background: var(--c); border-radius: var(--rd2); padding: 4px; border: 1px solid var(--b); }
+.tab {
+  flex: 1; padding: 10px; text-align: center; cursor: pointer; border-radius: var(--rd);
+  font-size: 11px; font-weight: 600; color: var(--tm); transition: all .15s;
+  border: 1px solid transparent; background: transparent; font-family: inherit;
+}
+.tab:hover { color: var(--t2); }
+.tab.ac { background: var(--h); color: var(--gold); border-color: rgba(201,168,76,0.15); }
+
+/* CARD */
+.card {
+  background: var(--c); border: 1px solid var(--b); border-radius: var(--rd3);
+  padding: 24px; animation: fadeUp .4s ease; margin-bottom: 12px;
+}
+
+/* FORM */
+.form-group { margin-bottom: 14px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+label {
+  display: block; font-size: 8px; font-weight: 700; color: var(--tm);
+  text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px;
+}
+input, select, textarea {
+  width: 100%; padding: 9px 11px; background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06); border-radius: 8px;
+  color: var(--t); font-size: 11px; font-family: inherit; outline: none;
+  transition: all .2s;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: rgba(201,168,76,0.35); box-shadow: 0 0 0 3px rgba(201,168,76,0.05);
+  background: rgba(255,255,255,0.04);
+}
+select {
+  cursor: pointer; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23c9a84c' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; padding-right: 32px;
+}
+select option { background: var(--c); color: var(--t); }
+textarea { min-height: 80px; resize: vertical; }
+
+/* SECTION HEADER */
+.section-hd {
+  font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--gold); margin: 18px 0 10px; padding-bottom: 6px;
+  border-bottom: 1px solid var(--b);
+}
+
+/* CALCULATED */
+.calc-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 12px; background: var(--h); border-radius: var(--rd);
+  margin-bottom: 4px; font-size: 11px;
+}
+.calc-row.net {
+  background: rgba(201,168,76,0.06); border: 1px solid rgba(201,168,76,0.12);
+  font-size: 13px; font-weight: 700; color: var(--gold);
+}
+
+/* BUTTONS */
+.btn {
+  width: 100%; padding: 12px; background: linear-gradient(135deg, var(--gold), var(--gold2));
+  color: #fff; border: none; border-radius: var(--rd); font-size: 12px; font-weight: 700;
+  cursor: pointer; transition: all .2s; font-family: inherit;
+  box-shadow: 0 2px 16px rgba(201,168,76,0.2); letter-spacing: 0.3px;
+}
+.btn:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(201,168,76,0.35); }
+.btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+.btn-spinner {
+  display: none; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite;
+  margin-right: 8px;
+}
+.btn.loading .btn-spinner { display: inline-block; }
+.btn.loading .btn-text { display: none; }
+
+/* STATUS */
+.status {
+  display: none; margin-top: 10px; padding: 10px 14px; border-radius: var(--rd);
+  font-size: 10px; font-weight: 600; text-align: center;
+}
+.status.error { display: block; background: rgba(239,68,68,0.06); color: #f87171; border: 1px solid rgba(239,68,68,0.1); }
+.status.success { display: block; background: rgba(16,185,129,0.06); color: var(--g); border: 1px solid rgba(16,185,129,0.1); }
+
+/* MONTH SELECTOR */
+.month-selector { display: flex; gap: 6px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+.month-selector label { margin-bottom: 0; margin-right: 4px; }
+.month-selector select { width: auto; min-width: 70px; }
+
+/* INFO BOX */
+.info-box {
+  background: rgba(201,168,76,0.04); border: 1px solid rgba(201,168,76,0.08);
+  border-radius: var(--rd); padding: 10px 14px; margin-bottom: 16px;
+  font-size: 9px; color: var(--t2); line-height: 1.5;
+}
+.info-box b { color: var(--gold); }
+
+/* FOOTER */
+.footer { text-align: center; padding: 20px; color: var(--tm); font-size: 9px; }
+.footer a { color: var(--t2); text-decoration: none; }
+
+/* RESPONSIVE */
+@media(max-width:600px) {
+  .form-row, .form-row-3 { grid-template-columns: 1fr; }
+  .card { padding: 16px; }
+  .header { padding: 0 12px; }
+  .container { padding: 12px 8px 30px; }
+}
+
+/* PLACEHOLDER */
+::placeholder { color: var(--tm); opacity: 0.6; }
+
+/* TALENT NEXUS SPECIFIC */
+.gold-text { color: var(--gold); }
+.gold-border { border-color: rgba(201,168,76,0.3); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-l">
+    <div class="logo">TN</div>
+    <div>
+      <h1>Talent Nexus</h1>
+      <div class="sub">Employee Self-Service Portal</div>
+    </div>
+  </div>
+  <div class="header-r">Secure &bull; Confidential</div>
+</div>
+
+<div class="container">
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab ac" onclick="switchTab('payslip')" id="tab-payslip">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:-2px"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      Payslip
+    </button>
+    <button class="tab" onclick="switchTab('experience')" id="tab-experience">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:-2px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Experience Letter
+    </button>
+  </div>
+
+  <!-- PAYSLIP FORM -->
+  <div id="panel-payslip">
+    <div class="card">
+      <div class="info-box">
+        Fill in your details below and click <b>Generate Payslip</b> to download a professional PDF payslip. You can generate up to <b>12 months</b> at once.
+      </div>
+
+      <div class="month-selector">
+        <label>Number of Months:</label>
+        <select id="psMonths" onchange="updateMonthInfo()">
+          <option value="1">1 Month</option><option value="2">2 Months</option><option value="3">3 Months</option>
+          <option value="4">4 Months</option><option value="5">5 Months</option><option value="6">6 Months</option>
+          <option value="7">7 Months</option><option value="8">8 Months</option><option value="9">9 Months</option>
+          <option value="10">10 Months</option><option value="11">11 Months</option><option value="12">12 Months</option>
+        </select>
+        <span id="monthInfo" style="font-size:9px;color:var(--tm)">— 1 page in PDF</span>
+      </div>
+
+      <div class="section-hd">Employee Information</div>
+      <div class="form-row">
+        <div class="form-group"><label>Employee Name *</label><input type="text" id="psName" placeholder="Full legal name"></div>
+        <div class="form-group"><label>Employee ID *</label><input type="text" id="psId" placeholder="e.g. CS2002202400"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Department</label><input type="text" id="psDept" placeholder="e.g. Customer Service Department"></div>
+        <div class="form-group"><label>Designation</label><input type="text" id="psDesig" placeholder="e.g. QA Specialist"></div>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group"><label>Pay Period From</label><input type="text" id="psFrom" placeholder="01/04/26"></div>
+        <div class="form-group"><label>Pay Period To</label><input type="text" id="psTo" placeholder="30/04/26"></div>
+        <div class="form-group"><label>Payment Date</label><input type="text" id="psPayDate" placeholder="15 - 05 - 2026"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Bank Name</label><input type="text" id="psBank" placeholder="e.g. Binance"></div>
+        <div class="form-group"><label>Account Number</label><input type="text" id="psAcct" placeholder="Account number"></div>
+      </div>
+
+      <div class="section-hd">Earnings (USD)</div>
+      <div class="form-row-3">
+        <div class="form-group"><label>Basic Salary</label><input type="number" id="psBasic" placeholder="0.00" step="0.01" oninput="calcSalary()"></div>
+        <div class="form-group"><label>Allowance</label><input type="number" id="psAllow" placeholder="0.00" step="0.01" oninput="calcSalary()"></div>
+        <div class="form-group"><label>Attendance Bonus</label><input type="number" id="psBonus" placeholder="0.00" step="0.01" oninput="calcSalary()"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Overtime</label><input type="number" id="psOT" placeholder="0.00" step="0.01" oninput="calcSalary()"></div>
+        <div class="form-group"><label>Commission</label><input type="number" id="psComm" placeholder="0.00" step="0.01" oninput="calcSalary()"></div>
+      </div>
+
+      <div class="section-hd">Deductions (USD)</div>
+      <div class="form-row-3">
+        <div class="form-group"><label>Tax</label><input type="number" id="psTax" placeholder="0.00" step="0.01" oninput="calcSalary()"></div>
+        <div class="form-group"><label>EPF / ETF</label><input type="number" id="psEpf" placeholder="0.00" step="0.01" oninput="calcSalary()"></div>
+        <div class="form-group"><label>Insurance</label><input type="number" id="psIns" placeholder="0.00" step="0.01" oninput="calcSalary()"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Loan Deduction</label><input type="number" id="psLoan" placeholder="0.00" step="0.01" oninput="calcSalary()"></div>
+        <div class="form-group"><label>Other Deduction</label><input type="number" id="psOther" placeholder="0.00" step="0.01" oninput="calcSalary()"></div>
+      </div>
+
+      <div class="section-hd">Pay Summary</div>
+      <div class="calc-row"><span>Gross Salary</span><span id="calcGross">USD $0.00</span></div>
+      <div class="calc-row"><span>Total Deductions</span><span id="calcDed">USD $0.00</span></div>
+      <div class="calc-row net"><span>NET PAY</span><span id="calcNet">USD $0.00</span></div>
+
+      <button class="btn" onclick="generatePayslip()" id="btnPayslip" style="margin-top:16px">
+        <span class="btn-spinner"></span>
+        <span class="btn-text">Generate Payslip PDF</span>
+      </button>
+      <div class="status" id="psStatus"></div>
+    </div>
+  </div>
+
+  <!-- EXPERIENCE LETTER FORM -->
+  <div id="panel-experience" style="display:none">
+    <div class="card">
+      <div class="info-box">
+        Fill in your details to generate a professional <b>Experience Certificate</b> PDF. The letter body can be customized before generating.
+      </div>
+
+      <div class="section-hd">Employee Information</div>
+      <div class="form-row">
+        <div class="form-group"><label>Employee Name *</label><input type="text" id="exName" placeholder="Full legal name"></div>
+        <div class="form-group"><label>Position *</label><input type="text" id="exPos" placeholder="e.g. Quality Assurance Specialist"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Shift</label><input type="text" id="exShift" placeholder="e.g. Rotational Shift"></div>
+        <div class="form-group"><label>Certificate Date</label><input type="text" id="exDate" placeholder="e.g. May 19, 2026"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Training Start Date</label><input type="text" id="exTrain" placeholder="e.g. 13 February 2024"></div>
+        <div class="form-group"><label>Official Working Date</label><input type="text" id="exOfficial" placeholder="e.g. 20 February 2024"></div>
+      </div>
+      <div class="form-group"><label>Address</label><input type="text" id="exAddr" placeholder="Full address"></div>
+
+      <div class="section-hd">Letter Body (optional — edit as needed)</div>
+      <textarea id="exBody" placeholder="Leave blank to use the default professional letter template."></textarea>
+
+      <button class="btn" onclick="generateExperience()" id="btnExp" style="margin-top:16px">
+        <span class="btn-spinner"></span>
+        <span class="btn-text">Generate Experience Letter PDF</span>
+      </button>
+      <div class="status" id="exStatus"></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Talent Nexus &copy; 2026 &middot; Employee Self-Service Portal &middot; All documents are computer-generated
+  </div>
+
+</div>
+
+<script>
+// ======== CONFIGURATION ========
+// Replace with your deployed Apps Script URL after deployment
+var API_URL = "YOUR_APPS_SCRIPT_URL_HERE";
+
+// ======== TAB SWITCHING ========
+function switchTab(tab) {
+  document.getElementById("panel-payslip").style.display = tab === "payslip" ? "block" : "none";
+  document.getElementById("panel-experience").style.display = tab === "experience" ? "block" : "none";
+  document.getElementById("tab-payslip").classList.toggle("ac", tab === "payslip");
+  document.getElementById("tab-experience").classList.toggle("ac", tab === "experience");
+  document.getElementById("psStatus").style.display = "none";
+  document.getElementById("exStatus").style.display = "none";
+}
+
+// ======== SALARY CALCULATION ========
+function calcSalary() {
+  var basic = parseFloat(document.getElementById("psBasic").value) || 0;
+  var allow = parseFloat(document.getElementById("psAllow").value) || 0;
+  var bonus = parseFloat(document.getElementById("psBonus").value) || 0;
+  var ot = parseFloat(document.getElementById("psOT").value) || 0;
+  var comm = parseFloat(document.getElementById("psComm").value) || 0;
+
+  var tax = parseFloat(document.getElementById("psTax").value) || 0;
+  var epf = parseFloat(document.getElementById("psEpf").value) || 0;
+  var ins = parseFloat(document.getElementById("psIns").value) || 0;
+  var loan = parseFloat(document.getElementById("psLoan").value) || 0;
+  var other = parseFloat(document.getElementById("psOther").value) || 0;
+
+  var gross = basic + allow + bonus + ot + comm;
+  var ded = tax + epf + ins + loan + other;
+  var net = gross - ded;
+
+  var fmt = function(n) { return "USD $" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+
+  document.getElementById("calcGross").textContent = fmt(gross);
+  document.getElementById("calcDed").textContent = fmt(ded);
+  document.getElementById("calcNet").textContent = fmt(net);
+}
+
+function updateMonthInfo() {
+  var m = parseInt(document.getElementById("psMonths").value) || 1;
+  document.getElementById("monthInfo").textContent = "— " + m + " page" + (m > 1 ? "s" : "") + " in PDF";
+}
+
+// ======== PAYSLIP GENERATION ========
+function generatePayslip() {
+  var name = document.getElementById("psName").value.trim();
+  var empId = document.getElementById("psId").value.trim();
+
+  if (!name || !empId) {
+    showStatus("psStatus", "Please fill in Employee Name and Employee ID (required fields).", "error");
+    return;
+  }
+
+  var data = {
+    action: "generate_payslip",
+    employeeName: name,
+    employeeId: empId,
+    department: document.getElementById("psDept").value.trim(),
+    designation: document.getElementById("psDesig").value.trim(),
+    payPeriodFrom: document.getElementById("psFrom").value.trim(),
+    payPeriodTo: document.getElementById("psTo").value.trim(),
+    paymentDate: document.getElementById("psPayDate").value.trim(),
+    bankName: document.getElementById("psBank").value.trim(),
+    accountNumber: document.getElementById("psAcct").value.trim(),
+    basicSalary: document.getElementById("psBasic").value,
+    allowance: document.getElementById("psAllow").value,
+    attendanceBonus: document.getElementById("psBonus").value,
+    overtime: document.getElementById("psOT").value,
+    commission: document.getElementById("psComm").value,
+    tax: document.getElementById("psTax").value,
+    epfEtf: document.getElementById("psEpf").value,
+    insurance: document.getElementById("psIns").value,
+    loanDeduction: document.getElementById("psLoan").value,
+    otherDeduction: document.getElementById("psOther").value,
+    months: document.getElementById("psMonths").value
+  };
+
+  callAPI(data, "btnPayslip", "psStatus");
+}
+
+// ======== EXPERIENCE GENERATION ========
+function generateExperience() {
+  var name = document.getElementById("exName").value.trim();
+  var pos = document.getElementById("exPos").value.trim();
+
+  if (!name || !pos) {
+    showStatus("exStatus", "Please fill in Employee Name and Position (required fields).", "error");
+    return;
+  }
+
+  var data = {
+    action: "generate_experience",
+    employeeName: name,
+    position: pos,
+    shift: document.getElementById("exShift").value.trim(),
+    trainingStart: document.getElementById("exTrain").value.trim(),
+    officialDate: document.getElementById("exOfficial").value.trim(),
+    address: document.getElementById("exAddr").value.trim(),
+    certDate: document.getElementById("exDate").value.trim(),
+    bodyText: document.getElementById("exBody").value.trim()
+  };
+
+  callAPI(data, "btnExp", "exStatus");
+}
+
+// ======== API CALL ========
+function callAPI(data, btnId, statusId) {
+  if (API_URL === "YOUR_APPS_SCRIPT_URL_HERE") {
+    showStatus(statusId, "API not configured. Please set the Apps Script URL in the code.", "error");
+    return;
+  }
+
+  var btn = document.getElementById(btnId);
+  var statusEl = document.getElementById(statusId);
+  statusEl.style.display = "none";
+  btn.classList.add("loading");
+  btn.disabled = true;
+
+  fetch(API_URL, {
+    method: "POST",
+    body: JSON.stringify(data),
+    headers: { "Content-Type": "application/json" }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(res) {
+    btn.classList.remove("loading");
+    btn.disabled = false;
+
+    if (res.error) {
+      showStatus(statusId, res.error, "error");
+      return;
+    }
+
+    if (res.pdf) {
+      showStatus(statusId, "PDF generated successfully! Downloading...", "success");
+
+      // Download PDF
+      var byteChars = atob(res.pdf);
+      var byteNums = new Array(byteChars.length);
+      for (var i = 0; i < byteChars.length; i++) {
+        byteNums[i] = byteChars.charCodeAt(i);
+      }
+      var byteArr = new Uint8Array(byteNums);
+      var blob = new Blob([byteArr], { type: "application/pdf" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = res.filename || "document.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } else {
+      showStatus(statusId, "Unknown response from server.", "error");
+    }
+  })
+  .catch(function(err) {
+    btn.classList.remove("loading");
+    btn.disabled = false;
+    showStatus(statusId, "Network error: " + err.message + ". Check your connection and API URL.", "error");
+  });
+}
+
+function showStatus(id, msg, type) {
+  var el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = "status " + type;
+  el.style.display = "block";
+}
+</script>
+</body>
+</html>
