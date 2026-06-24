@@ -426,7 +426,7 @@ function generateExperience() {
 
 // ======== API CALL ========
 function callAPI(data, btnId, statusId) {
-  if (API_URL === "https://script.google.com/macros/s/AKfycbwmcwgEUU5dBaFiQkC0H1ZudIOkQUiiMOwdrLk6SevgdnkZTyndVrWz-yHmzGlK9A/exec") {
+  if (API_URL.indexOf("YOUR_APPS_SCRIPT_URL") !== -1 || API_URL.length < 20) {
     showStatus(statusId, "API not configured. Please set the Apps Script URL in the code.", "error");
     return;
   }
