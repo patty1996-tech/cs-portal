@@ -4,7 +4,9 @@
 var SHEET_ID = "1n6fDjRCi17yp0KQ9lP29ARtqJVg0V_YgV_l9m4FjiCw";
 var HR_NAME = "Hannah Cortez";
 var HR_EMAIL = "hr@talentnexus.com";
-var CO_ADDRESS = "Suite 10 & 11, The Sanctuary, 23 Oak Hill Grove, Surbiton, Surrey KT6 6DU";
+var CO_WEBSITE = "www.talentnexus.com";
+var CO_ADDRESS_UK = "Suite 10 & 11, The Sanctuary, 23 Oak Hill Grove, Surbiton, Surrey KT6 6DU, United Kingdom";
+var CO_ADDRESS_TH = "The Offices at CentralWorld, 999/9 Rama I Road, 28th Floor, Pathum Wan, Bangkok 10330, Thailand";
 
 function doGet(e) {
   return ContentService.createTextOutput("CS Employee Portal API v2.0 — Operational")
@@ -155,10 +157,12 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
       '<p style="font-size:12px;color:#555;margin:0 0 4px"><b>With Regards,</b></p>' +
       '<p style="font-size:13px;color:#1a1a2e;margin:0 0 1px;font-weight:700">' + HR_NAME + '</p>' +
       '<p style="font-size:10px;color:#999;margin:0 0 8px">Human Resources Representative &bull; Talent Nexus</p>' +
-      '<p style="font-size:9px;color:#bbb;margin:0">' + CO_ADDRESS + '</p></div>' +
+      '<p style="font-size:9px;color:#bbb;margin:0">' + CO_WEBSITE + '</p>' +
+      '<p style="font-size:9px;color:#bbb;margin:0">UK: ' + CO_ADDRESS_UK + '</p>' +
+      '<p style="font-size:9px;color:#bbb;margin:0">Thailand: ' + CO_ADDRESS_TH + '</p></div>' +
       '</div>';
 
-    var plainBody = "Dear " + empName + ",\n\n" + docMsg + "\n\nDocument: " + docLabel + "\nDate: " + today + "\nIssued By: " + HR_NAME + ", HR Department\n\nFor inquiries, contact " + HR_EMAIL + "\n\nWith Regards,\n" + HR_NAME + "\nHuman Resources Representative\nTalent Nexus\n" + CO_ADDRESS;
+    var plainBody = "Dear " + empName + ",\n\n" + docMsg + "\n\nDocument: " + docLabel + "\nDate: " + today + "\nIssued By: " + HR_NAME + ", HR Department\n\nFor inquiries, contact " + HR_EMAIL + "\n\nWith Regards,\n" + HR_NAME + "\nHuman Resources Representative\nTalent Nexus\n" + CO_WEBSITE + "\nUK: " + CO_ADDRESS_UK + "\nThailand: " + CO_ADDRESS_TH;
 
     MailApp.sendEmail({
       to: cleanTo,
@@ -332,8 +336,10 @@ function payslipPage(nm,id,dp,ds,pf,pt,pd,bk,ac,ba,al,bo,ot,cm,tx,ep,ins,ln,oh,g
     '</div>' +
 
     // FOOTER
-    '<div class="ft">This is a computer-generated payslip and does not require a signature. &bull; ' +
-    'Talent Nexus &bull; ' + CO_ADDRESS + ' &bull; ' + HR_EMAIL + '</div>' +
+    '<div class="ft">This is a computer-generated payslip and does not require a signature.<br>' +
+    '<b>Talent Nexus</b> &bull; ' + CO_WEBSITE + ' &bull; ' + HR_EMAIL + '<br>' +
+    'UK: ' + CO_ADDRESS_UK + '<br>' +
+    'Thailand: ' + CO_ADDRESS_TH + '</div>' +
 
     '</div>';
 }
@@ -427,7 +433,9 @@ function generateExperienceHtml(d) {
     '</div>' +
 
     '<div class="ft">' +
-    '<b>Talent Nexus</b> &bull; ' + CO_ADDRESS + ' &bull; ' + HR_EMAIL + ' &bull; This is a computer-generated document.' +
+    '<b>Talent Nexus</b> &bull; ' + CO_WEBSITE + ' &bull; ' + HR_EMAIL + '<br>' +
+    'UK Office: ' + CO_ADDRESS_UK + ' &bull; Thailand Office: ' + CO_ADDRESS_TH + '<br>' +
+    'This is a computer-generated document.' +
     '</div>' +
 
     '</body></html>';
