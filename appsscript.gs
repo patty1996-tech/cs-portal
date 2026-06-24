@@ -107,15 +107,35 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
       var fmt2 = function(v){return v.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});};
       var amt2 = function(v){return v>0?"$"+fmt2(v):"—";};
 
+      var earnRows = '';
+      if (basic > 0) earnRows += '<tr><td style="padding:2px 14px;font-size:10px;color:#666">Basic Salary</td><td style="padding:2px 14px;font-size:10px;text-align:right">' + amt2(basic) + '</td></tr>';
+      if (allow > 0) earnRows += '<tr><td style="padding:2px 14px;font-size:10px;color:#666">Allowance</td><td style="padding:2px 14px;font-size:10px;text-align:right">' + amt2(allow) + '</td></tr>';
+      if (bonus > 0) earnRows += '<tr><td style="padding:2px 14px;font-size:10px;color:#666">Attendance Bonus</td><td style="padding:2px 14px;font-size:10px;text-align:right">' + amt2(bonus) + '</td></tr>';
+      if (otAmt > 0) earnRows += '<tr><td style="padding:2px 14px;font-size:10px;color:#666">Overtime</td><td style="padding:2px 14px;font-size:10px;text-align:right">' + amt2(otAmt) + '</td></tr>';
+      if (comm > 0) earnRows += '<tr><td style="padding:2px 14px;font-size:10px;color:#666">Commission</td><td style="padding:2px 14px;font-size:10px;text-align:right">' + amt2(comm) + '</td></tr>';
+      var dedRows = '';
+      if (taxAmt > 0) dedRows += '<tr><td style="padding:2px 14px;font-size:10px;color:#666">Tax</td><td style="padding:2px 14px;font-size:10px;text-align:right;color:#c0392b">—' + amt2(taxAmt) + '</td></tr>';
+      if (epfAmt > 0) dedRows += '<tr><td style="padding:2px 14px;font-size:10px;color:#666">EPF/ETF</td><td style="padding:2px 14px;font-size:10px;text-align:right;color:#c0392b">—' + amt2(epfAmt) + '</td></tr>';
+      if (insAmt > 0) dedRows += '<tr><td style="padding:2px 14px;font-size:10px;color:#666">Insurance</td><td style="padding:2px 14px;font-size:10px;text-align:right;color:#c0392b">—' + amt2(insAmt) + '</td></tr>';
+      if (loanAmt > 0) dedRows += '<tr><td style="padding:2px 14px;font-size:10px;color:#666">Loan</td><td style="padding:2px 14px;font-size:10px;text-align:right;color:#c0392b">—' + amt2(loanAmt) + '</td></tr>';
+      if (otherAmt > 0) dedRows += '<tr><td style="padding:2px 14px;font-size:10px;color:#666">Other</td><td style="padding:2px 14px;font-size:10px;text-align:right;color:#c0392b">—' + amt2(otherAmt) + '</td></tr>';
+
       docContent = '<table cellpadding="0" cellspacing="0" style="background:#f9f9f9;border:1px solid #eee;border-radius:5px;width:100%;margin:10px 0">' +
-        '<tr><td style="padding:10px 14px"><p style="font-size:12px;color:#555;margin:0 0 6px"><b>Document:</b> ' + esc(docLabel) + ' &bull; ' + today + '</p>' +
-        '<table style="width:100%;border-collapse:collapse;font-size:11px">' +
-        '<tr><td style="padding:3px 0;color:#888">Employee:</td><td style="padding:3px 0"><b>' + esc(empName) + '</b></td></tr>' +
-        '<tr><td style="padding:3px 0;color:#888">Gross Salary:</td><td style="padding:3px 0">USD $' + fmt2(gross) + '</td></tr>' +
-        '<tr><td style="padding:3px 0;color:#888">Deductions:</td><td style="padding:3px 0">USD $' + fmt2(totalDed) + '</td></tr>' +
-        '<tr><td style="padding:2px 0;border-top:1px solid #ddd"></td><td style="padding:2px 0;border-top:1px solid #ddd"></td></tr>' +
-        '<tr><td style="padding:3px 0;color:#1a1a2e;font-weight:700">Net Pay:</td><td style="padding:3px 0;font-size:14px;font-weight:700;color:#1a6b3c">USD $' + fmt2(net) + '</td></tr>' +
-        '</table></td></tr></table>';
+        '<tr><td style="padding:10px 0">' +
+        '<p style="font-size:12px;color:#555;margin:0 14px 8px"><b>' + esc(docLabel) + '</b> &bull; ' + today + '</p>' +
+        '<table style="width:100%;border-collapse:collapse"><tr><td style="width:50%;vertical-align:top">' +
+        '<p style="font-size:10px;font-weight:700;color:#1a1a2e;margin:0 14px 4px;text-transform:uppercase">Earnings</p>' +
+        earnRows +
+        '<tr style="border-top:1px solid #ddd"><td style="padding:4px 14px;font-size:10px;font-weight:700">Gross</td><td style="padding:4px 14px;font-size:10px;text-align:right;font-weight:700">' + amt2(gross) + '</td></tr>' +
+        '</td><td style="width:50%;vertical-align:top">' +
+        '<p style="font-size:10px;font-weight:700;color:#1a1a2e;margin:0 14px 4px;text-transform:uppercase">Deductions</p>' +
+        (dedRows || '<tr><td style="padding:2px 14px;font-size:10px;color:#999" colspan="2">None</td></tr>') +
+        '<tr style="border-top:1px solid #ddd"><td style="padding:4px 14px;font-size:10px;font-weight:700">Total Ded.</td><td style="padding:4px 14px;font-size:10px;text-align:right;font-weight:700">' + amt2(totalDed) + '</td></tr>' +
+        '</td></tr></table>' +
+        '<table style="width:100%;border-collapse:collapse;margin-top:6px;border-top:2px solid #1a1a2e">' +
+        '<tr><td style="padding:6px 14px;font-size:13px;font-weight:700;color:#1a1a2e">NET PAY</td><td style="padding:6px 14px;font-size:15px;font-weight:700;color:#1a6b3c;text-align:right">USD $' + fmt2(net) + '</td></tr>' +
+        '</table>' +
+        '</td></tr></table>';
     }
 
     var htmlBody = '<div style="font-family:Arial,Helvetica,sans-serif;max-width:540px;margin:0 auto;border:1px solid #e2e2e2;border-radius:8px;overflow:hidden;background:#fff">' +
