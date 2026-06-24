@@ -93,15 +93,30 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
   try {
     var cleanTo = emailTo.trim();
 
-    // Save document to Drive for permanent access link
-    var viewLink = "";
-    try {
-      var folder = DriveApp.getFoldersByName("CS_Portal_Docs");
-      var f = folder.hasNext() ? folder.next() : DriveApp.createFolder("CS_Portal_Docs");
-      var file = f.createFile(filename.replace(".pdf",".html"), htmlContent, "text/html");
-      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-      viewLink = file.getUrl();
-    } catch (e2) { viewLink = ""; }
+    // Embed payslip content into email body for direct viewing
+    var docContent = "";
+    if (docType === "payslip") {
+      // Extract salary info for inline display
+      var basic = num(d.basicSalary), allow = num(d.allowance), bonus = num(d.attendanceBonus);
+      var otAmt = num(d.overtime), comm = num(d.commission);
+      var taxAmt = num(d.tax), epfAmt = num(d.epfEtf), insAmt = num(d.insurance);
+      var loanAmt = num(d.loanDeduction), otherAmt = num(d.otherDeduction);
+      var gross = basic + allow + bonus + otAmt + comm;
+      var totalDed = taxAmt + epfAmt + insAmt + loanAmt + otherAmt;
+      var net = gross - totalDed;
+      var fmt2 = function(v){return v.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});};
+      var amt2 = function(v){return v>0?"$"+fmt2(v):"—";};
+
+      docContent = '<table cellpadding="0" cellspacing="0" style="background:#f9f9f9;border:1px solid #eee;border-radius:5px;width:100%;margin:10px 0">' +
+        '<tr><td style="padding:10px 14px"><p style="font-size:12px;color:#555;margin:0 0 6px"><b>Document:</b> ' + esc(docLabel) + ' &bull; ' + today + '</p>' +
+        '<table style="width:100%;border-collapse:collapse;font-size:11px">' +
+        '<tr><td style="padding:3px 0;color:#888">Employee:</td><td style="padding:3px 0"><b>' + esc(empName) + '</b></td></tr>' +
+        '<tr><td style="padding:3px 0;color:#888">Gross Salary:</td><td style="padding:3px 0">USD $' + fmt2(gross) + '</td></tr>' +
+        '<tr><td style="padding:3px 0;color:#888">Deductions:</td><td style="padding:3px 0">USD $' + fmt2(totalDed) + '</td></tr>' +
+        '<tr><td style="padding:2px 0;border-top:1px solid #ddd"></td><td style="padding:2px 0;border-top:1px solid #ddd"></td></tr>' +
+        '<tr><td style="padding:3px 0;color:#1a1a2e;font-weight:700">Net Pay:</td><td style="padding:3px 0;font-size:14px;font-weight:700;color:#1a6b3c">USD $' + fmt2(net) + '</td></tr>' +
+        '</table></td></tr></table>';
+    }
 
     var htmlBody = '<div style="font-family:Arial,Helvetica,sans-serif;max-width:540px;margin:0 auto;border:1px solid #e2e2e2;border-radius:8px;overflow:hidden;background:#fff">' +
       '<div style="background:#1a1a2e;padding:22px 28px;text-align:center">' +
@@ -109,14 +124,9 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
       '<p style="color:#aaa;margin:4px 0 0;font-size:10px;letter-spacing:2px;text-transform:uppercase">Human Resources Department</p></div>' +
       '<div style="padding:24px 28px">' +
       '<p style="font-size:14px;color:#333;margin:0 0 8px">Dear <b>' + esc(empName) + '</b>,</p>' +
-      '<p style="font-size:13px;color:#555;line-height:1.7;margin:0 0 14px">' + docMsg + '</p>' +
-      '<table cellpadding="0" cellspacing="0" style="background:#f9f9f9;border:1px solid #eee;border-radius:5px;width:100%;margin:10px 0"><tr><td style="padding:10px 14px">' +
-      '<p style="font-size:11px;color:#777;margin:0 0 3px"><b>Document:</b> ' + esc(docLabel) + '</p>' +
-      '<p style="font-size:11px;color:#777;margin:0 0 3px"><b>Date:</b> ' + today + '</p>' +
-      '<p style="font-size:11px;color:#777;margin:0"><b>Issued By:</b> ' + HR_NAME + ', HR Department</p>' +
-      '</td></tr></table>' +
-      (viewLink ? '<p style="font-size:12px;color:#555;line-height:1.6;margin:10px 0 0"><b>View Document:</b> <a href="' + viewLink + '" style="color:#c9a84c">Open in Browser</a></p>' : '') +
-      '<p style="font-size:12px;color:#999;line-height:1.6;margin:0">For inquiries, contact <a href="mailto:' + HR_EMAIL + '" style="color:#c9a84c;text-decoration:none"><b>' + HR_EMAIL + '</b></a>.</p>' +
+      '<p style="font-size:13px;color:#555;line-height:1.7;margin:0 0 8px">' + docMsg + '</p>' +
+      docContent +
+      '<p style="font-size:12px;color:#999;line-height:1.6;margin:8px 0 0">For inquiries, contact <a href="mailto:' + HR_EMAIL + '" style="color:#c9a84c;text-decoration:none"><b>' + HR_EMAIL + '</b></a>.</p>' +
       '</div>' +
       '<div style="background:#fafafa;padding:18px 28px;border-top:1px solid #eee;text-align:center">' +
       '<p style="font-size:12px;color:#555;margin:0 0 4px"><b>With Regards,</b></p>' +
