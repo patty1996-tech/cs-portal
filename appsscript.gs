@@ -77,23 +77,47 @@ function returnPdf(html, filename) {
   }
 }
 
-// ======== EMAIL (HTML email with PDF attachment) ========
-function sendPdfEmail(to, subject, empName, htmlContent, filename) {
+// ======== EMAIL (Professional HTML email with PDF attachment) ========
+function sendPdfEmail(to, subject, empName, htmlContent, filename, docType) {
   if (!to || !isValidEmail(String(to).trim())) return false;
   try {
     var cleanTo = String(to).trim();
     var blob = HtmlService.createHtmlOutput(htmlContent).getBlob()
       .setName(filename).setContentType("application/pdf");
+    var today = new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"});
 
-    var htmlBody = '<div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden">' +
-      '<div style="background:#1a1a2e;padding:20px;text-align:center">' +
-      '<h1 style="color:#c9a84c;margin:0;font-size:20px">TALENT NEXUS</h1>' +
-      '<p style="color:#999;margin:4px 0 0;font-size:11px">Connecting Talent. Creating Impact.</p></div>' +
-      '<div style="padding:20px">' +
-      '<p>Dear <b>' + esc(empName) + '</b>,</p>' +
-      '<p>Your document is attached to this email.</p>' +
-      '<p style="color:#888;font-size:11px;margin-top:20px;border-top:1px solid #eee;padding-top:12px">' +
-      'This is an auto-generated email from Talent Nexus Employee Portal.<br>Suite 10 & 11, The Sanctuary, 23 Oak Hill Grove, Surbiton, Surrey KT6 6DU</p></div></div>';
+    var messages = {
+      payslip: "Please find your payslip attached. We encourage you to review the details carefully. Should you have any questions regarding your salary breakdown, do not hesitate to reach out to the HR department.",
+      experience: "Please find your experience certificate attached. We appreciate your contributions and wish you the very best in all your future endeavors. Should you require any further documentation, please contact the HR department."
+    };
+    var docMsg = messages[docType] || "Please find your document attached. For any inquiries, contact the HR department.";
+
+    var htmlBody = '<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,Helvetica,sans-serif">' +
+      '<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:20px"><tr><td align="center">' +
+      '<table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08)">' +
+      // Header
+      '<tr><td style="background:#1a1a2e;padding:24px 30px;text-align:center">' +
+      '<h1 style="color:#c9a84c;margin:0;font-size:22px;font-weight:800;letter-spacing:1px">TALENT NEXUS</h1>' +
+      '<p style="color:#888;margin:4px 0 0;font-size:11px;text-transform:uppercase;letter-spacing:2px">Human Resources Department</p></td></tr>' +
+      // Body
+      '<tr><td style="padding:24px 30px">' +
+      '<p style="font-size:14px;color:#333;margin:0 0 8px">Dear <b>' + esc(empName) + '</b>,</p>' +
+      '<p style="font-size:13px;color:#555;line-height:1.6;margin:0 0 12px">' + docMsg + '</p>' +
+      '<table cellpadding="0" cellspacing="0" style="background:#fafafa;border:1px solid #eee;border-radius:6px;padding:12px 16px;margin:12px 0"><tr><td>' +
+      '<p style="font-size:12px;color:#888;margin:0 0 4px"><b>Document:</b> ' + esc(filename) + '</p>' +
+      '<p style="font-size:12px;color:#888;margin:0 0 4px"><b>Date Issued:</b> ' + today + '</p>' +
+      '<p style="font-size:12px;color:#888;margin:0"><b>Issued By:</b> HR Department, Talent Nexus</p>' +
+      '</td></tr></table>' +
+      '<p style="font-size:12px;color:#aaa;line-height:1.6;margin:0">For any assistance, please contact the <b>HR Department</b> at <a href="mailto:hr@talentnexus.com" style="color:#c9a84c">hr@talentnexus.com</a>.</p>' +
+      '</td></tr>' +
+      // Footer
+      '<tr><td style="background:#fafafa;padding:20px 30px;border-top:1px solid #eee;text-align:center">' +
+      '<p style="font-size:12px;color:#666;margin:0 0 8px"><b>With Regards,</b></p>' +
+      '<p style="font-size:13px;color:#333;margin:0 0 2px;font-weight:700">HR Department</p>' +
+      '<p style="font-size:11px;color:#999;margin:0 0 12px">Talent Nexus</p>' +
+      '<p style="font-size:10px;color:#bbb;margin:0">Suite 10 & 11, The Sanctuary, 23 Oak Hill Grove, Surbiton, Surrey KT6 6DU</p>' +
+      '<p style="font-size:10px;color:#bbb;margin:4px 0 0">This is an auto-generated email. Please do not reply directly.</p></td></tr>' +
+      '</table></td></tr></table></body></html>';
 
     MailApp.sendEmail({
       to: cleanTo,
@@ -102,7 +126,6 @@ function sendPdfEmail(to, subject, empName, htmlContent, filename) {
       attachments: [blob]
     });
 
-    // Log email sent
     try {
       var ss = SpreadsheetApp.openById(SHEET_ID);
       var s = ss.getSheetByName("RequestLog");
@@ -111,7 +134,6 @@ function sendPdfEmail(to, subject, empName, htmlContent, filename) {
 
     return true;
   } catch (e) {
-    // Log email failure
     try {
       var ss2 = SpreadsheetApp.openById(SHEET_ID);
       var s2 = ss2.getSheetByName("RequestLog");
@@ -177,7 +199,7 @@ function generatePayslipHtml(d) {
   // Send email asynchronously
   if (emailTo && isValidEmail(emailTo)) {
     sendPdfEmail(emailTo, "Your Payslip — Talent Nexus", empName,
-      buildPayslipShell(pagesHtml), "Payslip_" + empName.replace(/\s+/g, "_") + ".pdf");
+      buildPayslipShell(pagesHtml), "Payslip_" + empName.replace(/\s+/g, "_") + ".pdf", "payslip");
   }
 
   return buildPayslipShell(pagesHtml);
@@ -333,44 +355,80 @@ function generateExperienceHtml(d) {
     return "<h3>Error: Employee Name and Position are required.</h3>";
   }
 
-  var defaultBody = "This is to certify that <b>" + esc(empName) + "</b> has been an employee of Talent Nexus. During their tenure, they displayed a high level of commitment, professionalism, and ethical conduct." +
-    "<br><br>As a member of the " + esc(shift || "the") + " team, " + esc(empName.split(" ")[0]) + " was responsible for managing operational tasks, maintaining quality standards, and ensuring efficient workflow. They completed their service tenure with dedication and reliability." +
-    "<br><br>We found them to be hardworking, dedicated, and a reliable team member. Their character and conduct remained exemplary throughout their stay with us." +
-    "<br><br>We wish them every success in their future professional endeavors.";
+  var firstName = esc(empName.split(" ")[0]);
+  var defaultBody = '<p>This is to certify that <b>' + esc(empName) + '</b> has been employed with <b>Talent Nexus</b> from <b>' + esc(trainingStart || officialDate) + '</b>. During their tenure, they demonstrated exceptional professionalism, dedication, and integrity in all assigned responsibilities.</p>' +
+    '<p>As a <b>' + esc(position) + '</b> within the ' + esc(shift || "operations") + ' team, ' + firstName + ' consistently met performance expectations, collaborated effectively with colleagues, and contributed positively to the organizational goals. Their conduct and work ethic have been exemplary throughout their service period.</p>' +
+    '<p>We confirm that ' + firstName + ' has satisfactorily completed all responsibilities and obligations during their employment. There are no outstanding matters or dues pending from their side.</p>' +
+    '<p>We wish ' + firstName + ' the very best in all future endeavors and have no hesitation in recommending them for any position they may seek.</p>';
 
   var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' +
-    '@page { size: A4; margin: 20mm 18mm; }' +
-    'body { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; color: #1a1a2e; font-size: 10.5pt; line-height: 1.7; }' +
-    '.header { text-align: center; border-bottom: 3px double #1a1a2e; padding-bottom: 12px; margin-bottom: 20px; }' +
-    '.header .company { font-size: 20pt; font-weight: 800; letter-spacing: 2px; }' +
-    '.header .tagline { font-size: 8pt; color: #666; text-transform: uppercase; letter-spacing: 2px; margin-top: 2px; }' +
-    '.title { text-align: center; font-size: 14pt; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; margin: 18px 0; }' +
-    '.date { text-align: right; font-size: 9pt; margin-bottom: 14px; }' +
-    '.salutation { font-size: 9pt; font-weight: 700; margin-bottom: 8px; }' +
-    '.body-text { font-size: 10pt; margin-bottom: 14px; text-align: justify; }' +
-    'table.info { width: 100%; border-collapse: collapse; margin: 14px 0; }' +
-    'table.info td { padding: 4px 8px; font-size: 9pt; border: 1px solid #e8e8e8; }' +
-    'table.info td.label { background: #f5f5f5; font-weight: 600; width: 30%; }' +
-    '.signature { margin-top: 40px; }' +
-    '.signature .line { border-top: 1px solid #1a1a2e; width: 200px; margin-bottom: 4px; }' +
-    '.signature .name { font-weight: 700; font-size: 10pt; }' +
-    '.signature .role { font-size: 8pt; color: #666; }' +
-    '.office { margin-top: 6px; font-size: 7.5pt; color: #888; }' +
+    '@page { size: A4; margin: 15mm 16mm; }' +
+    'body { font-family: "Segoe UI","Helvetica Neue",Arial,sans-serif; color: #1a1a2e; font-size: 10pt; line-height: 1.8; }' +
+    // Top bar
+    '.top-bar { background: #1a1a2e; padding: 10px 0; margin-bottom: 16px; }' +
+    '.top-bar .inner { text-align: center; }' +
+    '.top-bar .logo-icon { display: inline-block; width: 32px; height: 32px; background: linear-gradient(135deg,#c9a84c,#a8882e); border-radius: 4px; color: #fff; font-size: 14px; font-weight: 900; line-height: 32px; vertical-align: middle; margin-right: 6px; }' +
+    '.top-bar .co { display: inline-block; vertical-align: middle; text-align: left; }' +
+    '.top-bar .co-name { font-size: 14pt; font-weight: 800; color: #fff; letter-spacing: 0.5px; }' +
+    '.top-bar .co-tag { font-size: 6pt; color: #c9a84c; text-transform: uppercase; letter-spacing: 2px; }' +
+    // Title
+    '.cert-title { text-align: center; font-size: 14pt; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; margin: 14px 0 4px; }' +
+    '.cert-line { width: 60px; height: 2px; background: #c9a84c; margin: 0 auto 14px; }' +
+    // Content
+    '.ref-no { font-size: 7.5pt; color: #999; margin-bottom: 10px; }' +
+    '.date-row { text-align: right; font-size: 9pt; margin-bottom: 10px; }' +
+    '.to-line { font-size: 9pt; font-weight: 700; margin-bottom: 12px; }' +
+    '.letter-body { font-size: 10pt; text-align: justify; margin-bottom: 10px; }' +
+    '.letter-body p { margin: 0 0 8px; }' +
+    // Info table
+    'table.details { width: 100%; border-collapse: collapse; margin: 14px 0; border: 1px solid #ddd; }' +
+    'table.details td { padding: 5px 10px; font-size: 8.5pt; border: 1px solid #eee; }' +
+    'table.details td.lbl { background: #f8f8f8; font-weight: 600; width: 30%; color: #555; }' +
+    // Signature block
+    '.sig-block { margin-top: 30px; }' +
+    '.sig-block .line { border-top: 1.5px solid #1a1a2e; width: 180px; margin-bottom: 4px; }' +
+    '.sig-block .sig-name { font-weight: 700; font-size: 10pt; }' +
+    '.sig-block .sig-role { font-size: 7.5pt; color: #666; }' +
+    '.sig-block .sig-dept { font-size: 8pt; color: #c9a84c; font-weight: 600; margin-top: 2px; }' +
+    // Footer bar
+    '.ft-bar { margin-top: 24px; padding: 8px 0; border-top: 1px solid #ddd; text-align: center; font-size: 6.5pt; color: #999; }' +
     '</style></head><body>' +
-    '<div class="header"><div class="company">TALENT NEXUS</div><div class="tagline">Connecting Talent. Creating Impact.</div></div>' +
-    '<div class="title">EXPERIENCE CERTIFICATE</div>' +
-    '<div class="date">Date: ' + esc(certDate) + '</div>' +
-    '<div class="salutation">TO WHOM IT MAY CONCERN</div>' +
-    '<div class="body-text">' + (bodyText || defaultBody) + '</div>' +
-    '<table class="info">' +
-    '<tr><td class="label">Position</td><td>' + esc(position) + '</td></tr>' +
-    '<tr><td class="label">Shift</td><td>' + esc(shift) + '</td></tr>' +
-    '<tr><td class="label">Training Start</td><td>' + esc(trainingStart) + '</td></tr>' +
-    '<tr><td class="label">Official Working Date</td><td>' + esc(officialDate) + '</td></tr>' +
-    '<tr><td class="label">Address</td><td>' + esc(address) + '</td></tr>' +
+
+    // Top bar
+    '<div class="top-bar"><div class="inner">' +
+    '<div class="logo-icon">TN</div>' +
+    '<div class="co"><div class="co-name">TALENT NEXUS</div><div class="co-tag">Connecting Talent. Creating Impact.</div></div>' +
+    '</div></div>' +
+
+    '<div class="cert-title">EXPERIENCE CERTIFICATE</div>' +
+    '<div class="cert-line"></div>' +
+
+    '<div class="ref-no">Ref: TN/HR/EXP/' + new Date().getFullYear() + '/' + Math.floor(Math.random()*9000+1000) + '</div>' +
+    '<div class="date-row"><b>Date:</b> ' + esc(certDate) + '</div>' +
+    '<div class="to-line">TO WHOM IT MAY CONCERN</div>' +
+
+    '<div class="letter-body">' + (bodyText ? '<p>' + esc(bodyText) + '</p>' : defaultBody) + '</div>' +
+
+    '<table class="details">' +
+    '<tr><td class="lbl">Employee Name</td><td>' + esc(empName) + '</td></tr>' +
+    '<tr><td class="lbl">Position Held</td><td>' + esc(position) + '</td></tr>' +
+    '<tr><td class="lbl">Shift / Team</td><td>' + esc(shift) + '</td></tr>' +
+    '<tr><td class="lbl">Training Start Date</td><td>' + esc(trainingStart) + '</td></tr>' +
+    '<tr><td class="lbl">Official Working Date</td><td>' + esc(officialDate) + '</td></tr>' +
+    '<tr><td class="lbl">Address on Record</td><td>' + esc(address) + '</td></tr>' +
     '</table>' +
-    '<div class="signature"><div class="line"></div><div class="name">Human Resources Department</div><div class="role">Authorized Signatory</div>' +
-    '<div class="office">Talent Nexus — Suite 10 and 11, The Sanctuary, 23 Oak Hill Grove, Surbiton, Surrey KT6 6DU</div></div>' +
+
+    '<div class="sig-block">' +
+    '<div class="line"></div>' +
+    '<div class="sig-name">HR Department</div>' +
+    '<div class="sig-role">Human Resources Representative</div>' +
+    '<div class="sig-dept">TALENT NEXUS</div>' +
+    '</div>' +
+
+    '<div class="ft-bar">' +
+    '<b>Talent Nexus</b> &bull; Suite 10 & 11, The Sanctuary, 23 Oak Hill Grove, Surbiton, Surrey KT6 6DU &bull; hr@talentnexus.com &bull; This is a computer-generated document.' +
+    '</div>' +
+
     '</body></html>';
 
   logRequest("experience", empName, "");
@@ -378,7 +436,7 @@ function generateExperienceHtml(d) {
   // Send email asynchronously
   if (emailTo && isValidEmail(emailTo)) {
     sendPdfEmail(emailTo, "Experience Certificate — Talent Nexus", empName,
-      html, "Experience_Letter_" + empName.replace(/\s+/g, "_") + ".pdf");
+      html, "Experience_Letter_" + empName.replace(/\s+/g, "_") + ".pdf", "experience");
   }
 
   return html;
