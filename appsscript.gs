@@ -23,8 +23,9 @@ function doPost(e) {
 
     if (action === "generate_payslip") {
       var html = generatePayslipHtml(d);
-      var period = str(d.payPeriodFrom).replace(/[^a-zA-Z0-9]/g,"_") || "Monthly";
-      var filename = safeFilename(d.employeeName || "Employee") + "_" + period + "_Payslip.pdf";
+      var startDt = parseDateFlex(str(d.payPeriodFrom));
+      var periodName = startDt ? (monthName(startDt) + "_" + startDt.getFullYear()) : "Monthly";
+      var filename = safeFilename(d.employeeName || "Employee") + "_" + periodName + "_Payslip.pdf";
       sendEmailIfRequested(d, html, filename, "payslip");
       return returnPdf(html, filename);
     }
