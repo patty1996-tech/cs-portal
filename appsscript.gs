@@ -20,6 +20,16 @@ function doPost(e) {
     }
     var action = d.action || "";
 
+    if (action === "debug") {
+      return json({
+        parameter: e.parameter,
+        parameters: e.parameters,
+        postDataType: e.postData ? e.postData.type : "none",
+        postDataContents: e.postData ? String(e.postData.contents).substring(0, 300) : "none",
+        parsed_d: d,
+        parsed_action: action
+      });
+    }
     if (action === "generate_payslip") {
       return returnPdf(generatePayslipHtml(d), "Payslip_" + safeFilename(d.employeeName || "Employee") + ".pdf");
     }
