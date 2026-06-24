@@ -47,9 +47,10 @@ function json(obj) {
 // ======== PDF RETURN (displays document + auto-print for PDF save) ========
 function returnPdf(html, filename) {
   try {
+    var cleanTitle = filename.replace(/\.pdf$/,"").replace(/_/g," ");
     return HtmlService.createHtmlOutput(
-      '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Talent Nexus — ' + esc(filename) + '</title>' +
-      '<style>@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}' +
+      '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + esc(cleanTitle) + '</title>' +
+      '<style>@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{size:A4;margin:0}}' +
       'body{margin:0;padding:0;font-family:"Segoe UI",Arial,sans-serif;background:#f0f0f0}' +
       '.toolbar{position:fixed;top:0;left:0;right:0;background:#1a1a2e;color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;z-index:999;box-shadow:0 2px 8px rgba(0,0,0,0.3)}' +
       '.toolbar span{font-size:13px;font-weight:600}' +
@@ -318,6 +319,7 @@ function generateExperienceHtml(d) {
     '.dtbl td.lbl{background:#f8f8f8;font-weight:600;color:#555;width:28%}' +
     // Signature
     '.sig{margin-top:26px}' +
+    '.sig-sign{font-family:"Segoe Script","Brush Script MT","Great Vibes",cursive;font-size:16pt;color:#1a1a2e;margin-bottom:4px}' +
     '.sig-line{border-top:1.5px solid #1a1a2e;width:170px;margin-bottom:3px}' +
     '.sig-name{font-weight:700;font-size:9.5pt}' +
     '.sig-role{font-size:7.5pt;color:#666}' +
@@ -351,6 +353,7 @@ function generateExperienceHtml(d) {
     '</table>' +
 
     '<div class="sig">' +
+    '<div class="sig-sign">' + HR_NAME + '</div>' +
     '<div class="sig-line"></div>' +
     '<div class="sig-name">' + HR_NAME + '</div>' +
     '<div class="sig-role">Human Resources Representative</div>' +
