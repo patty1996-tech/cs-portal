@@ -15,7 +15,8 @@ function doPost(e) {
     if (e.postData && e.postData.type === "application/json") {
       d = JSON.parse(e.postData.contents);
     } else {
-      d = e.parameters || {};
+      // e.parameter (singular) returns strings; e.parameters (plural) returns arrays
+      d = e.parameter || {};
     }
     var action = d.action || "";
 
