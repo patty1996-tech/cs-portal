@@ -336,8 +336,8 @@ function generateExperienceHtml(d) {
     '.drow{text-align:right;font-size:8.5pt;margin-bottom:8px}' +
     '.to{font-size:8.5pt;font-weight:700;margin-bottom:10px}' +
     // Body
-    '.body-text{font-size:9.5pt;text-align:justify;margin-bottom:8px}' +
-    '.body-text p{margin:0 0 6px}' +
+    '.body-text{font-size:10pt;text-align:justify;margin-bottom:8px;line-height:1.9}' +
+    '.body-text p{margin:0 0 14px;text-indent:0}' +
     // Details table
     '.dtbl{width:100%;border-collapse:collapse;border:1px solid #ddd;margin:12px 0}' +
     '.dtbl td{padding:4px 10px;font-size:8pt;border:1px solid #eee}' +
