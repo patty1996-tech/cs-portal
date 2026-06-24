@@ -367,7 +367,7 @@ function submitForm(action, fields, btnId, statusId) {
   var form = document.createElement("form");
   form.method = "POST";
   form.action = API_URL;
-  form.target = "dlFrame";
+  form.target = "_blank";
   form.style.display = "none";
 
   addHidden(form, "action", action);
