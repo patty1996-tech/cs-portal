@@ -55,23 +55,19 @@ function returnPdf(html, filename) {
       .setName(filename).setContentType("application/pdf");
     var b64 = Utilities.base64Encode(blob.getBytes());
 
-    // Return an HTML page that auto-downloads the PDF via JavaScript
-    // No CORS issues since the new tab is on script.google.com origin
+    // Return an HTML page that downloads the PDF
     return HtmlService.createHtmlOutput(
-      '<!DOCTYPE html><html><head><title>Download</title></head><body><script>' +
-      'var b64="' + b64 + '";' +
-      'var bytes=atob(b64);' +
-      'var arr=new Uint8Array(bytes.length);' +
-      'for(var i=0;i<bytes.length;i++)arr[i]=bytes.charCodeAt(i);' +
-      'var blob=new Blob([arr],{type:"application/pdf"});' +
-      'var url=URL.createObjectURL(blob);' +
-      'var a=document.createElement("a");' +
-      'a.href=url;a.download="' + filename + '";' +
-      'document.body.appendChild(a);a.click();' +
-      'document.body.removeChild(a);' +
-      'URL.revokeObjectURL(url);' +
-      'window.close();' +
-      '</script></body></html>'
+      '<!DOCTYPE html><html><head><title>Your Document</title>' +
+      '<style>body{font-family:Arial,sans-serif;text-align:center;padding:40px;color:#333}' +
+      '.btn{display:inline-block;padding:14px 28px;background:#c9a84c;color:#fff;border-radius:6px;' +
+      'text-decoration:none;font-weight:700;font-size:16px;margin-top:10px}' +
+      '.btn:hover{background:#a8882e}</style></head><body>' +
+      '<h2>Talent Nexus</h2>' +
+      '<p>Your document is ready.</p>' +
+      '<p><a class="btn" href="data:application/pdf;base64,' + b64 + '" download="' + filename + '">Download PDF</a></p>' +
+      '<p style="font-size:12px;color:#999;margin-top:20px">If download does not start, click the button above.</p>' +
+      '<script>setTimeout(function(){document.querySelector(".btn").click()},500);</script>' +
+      '</body></html>'
     );
 
   } catch (e) {
