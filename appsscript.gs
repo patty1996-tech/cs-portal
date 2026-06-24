@@ -163,6 +163,15 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
       '<div style="padding:24px 28px">' +
       '<p style="font-size:14px;color:#333;margin:0 0 8px">Dear <b>' + esc(empName) + '</b>,</p>' +
       '<p style="font-size:13px;color:#555;line-height:1.7;margin:0 0 8px">' + docMsg + '</p>' +
+      // Preview card
+      '<table cellpadding="0" cellspacing="0" style="background:#fafafa;border:1px solid #e0e0e0;border-radius:6px;width:100%;margin:10px 0"><tr>' +
+      '<td style="width:90px;background:#1a1a2e;text-align:center;vertical-align:middle;padding:16px 0;border-radius:6px 0 0 6px">' +
+      '<span style="color:#c9a84c;font-size:28px;font-weight:900">TN</span></td>' +
+      '<td style="padding:14px 16px;vertical-align:middle">' +
+      '<p style="font-size:12px;font-weight:700;color:#1a1a2e;margin:0 0 4px">' + esc(docLabel) + ' Ready</p>' +
+      '<p style="font-size:11px;color:#888;margin:0 0 8px">' + esc(empName) + ' &bull; ' + today + '</p>' +
+      '<a href="https://patty1996-tech.github.io/cs-portal/" style="display:inline-block;background:#c9a84c;color:#fff;padding:6px 18px;border-radius:4px;text-decoration:none;font-size:11px;font-weight:600">Download</a>' +
+      '</td></tr></table>' +
       docContent +
       '<p style="font-size:12px;color:#555;line-height:1.6;margin:8px 0 4px"><b>Download:</b> <a href="https://patty1996-tech.github.io/cs-portal/" style="color:#c9a84c">Talent Nexus Employee Portal</a></p>' +
       '<p style="font-size:12px;color:#999;line-height:1.6;margin:0">For inquiries, contact <a href="mailto:' + HR_EMAIL + '" style="color:#c9a84c;text-decoration:none"><b>' + HR_EMAIL + '</b></a>.</p>' +
