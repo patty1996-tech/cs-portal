@@ -258,7 +258,12 @@ textarea { min-height: 80px; resize: vertical; }
       <div class="calc-row"><span>Total Deductions</span><span id="calcDed">USD $0.00</span></div>
       <div class="calc-row net"><span>NET PAY</span><span id="calcNet">USD $0.00</span></div>
 
-      <button class="btn" onclick="generatePayslip()" id="btnPayslip" style="margin-top:16px">
+      <div class="section-hd">Delivery Options</div>
+      <div class="form-row">
+        <div class="form-group"><label>Email (optional — send PDF copy)</label><input type="email" id="psEmail" placeholder="your@email.com"></div>
+      </div>
+
+      <button class="btn" onclick="generatePayslip()" id="btnPayslip" style="margin-top:4px">
         <span class="btn-spinner"></span>
         <span class="btn-text">Generate Payslip PDF</span>
       </button>
@@ -291,7 +296,12 @@ textarea { min-height: 80px; resize: vertical; }
       <div class="section-hd">Letter Body (optional — edit as needed)</div>
       <textarea id="exBody" placeholder="Leave blank to use the default professional letter template."></textarea>
 
-      <button class="btn" onclick="generateExperience()" id="btnExp" style="margin-top:16px">
+      <div class="section-hd">Delivery Options</div>
+      <div class="form-row">
+        <div class="form-group"><label>Email (optional — send PDF copy)</label><input type="email" id="exEmail" placeholder="your@email.com"></div>
+      </div>
+
+      <button class="btn" onclick="generateExperience()" id="btnExp" style="margin-top:4px">
         <span class="btn-spinner"></span>
         <span class="btn-text">Generate Experience Letter PDF</span>
       </button>
@@ -381,7 +391,8 @@ function generatePayslip() {
     insurance: document.getElementById("psIns").value,
     loanDeduction: document.getElementById("psLoan").value,
     otherDeduction: document.getElementById("psOther").value,
-    months: document.getElementById("psMonths").value
+    months: document.getElementById("psMonths").value,
+    emailTo: document.getElementById("psEmail").value.trim()
   };
 
   callAPI(data, "btnPayslip", "psStatus");
@@ -406,7 +417,8 @@ function generateExperience() {
     officialDate: document.getElementById("exOfficial").value.trim(),
     address: document.getElementById("exAddr").value.trim(),
     certDate: document.getElementById("exDate").value.trim(),
-    bodyText: document.getElementById("exBody").value.trim()
+    bodyText: document.getElementById("exBody").value.trim(),
+    emailTo: document.getElementById("exEmail").value.trim()
   };
 
   callAPI(data, "btnExp", "exStatus");

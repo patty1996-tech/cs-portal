@@ -128,7 +128,21 @@ function generatePayslip(d) {
 
     var pdfB64 = Utilities.base64Encode(blob.getBytes());
     logRequest("payslip", empName, empId);
-    return json({ ok: true, pdf: pdfB64, filename: "Payslip_" + empName.replace(/\s+/g, "_") + ".pdf" });
+
+    // Email PDF if requested
+    var emailTo = String(d.emailTo || "").trim();
+    if (emailTo && isValidEmail(emailTo)) {
+      try {
+        MailApp.sendEmail({
+          to: emailTo,
+          subject: "Your Payslip — Talent Nexus",
+          body: "Dear " + empName + ",\n\nYour payslip for the period " + payPeriodFrom + " to " + payPeriodTo + " is attached.\n\nThis is an auto-generated document from Talent Nexus Employee Portal.\n\n— Talent Nexus HR",
+          attachments: [blob]
+        });
+      } catch (e) { /* email failed silently, PDF still returned */ }
+    }
+
+    return json({ ok: true, pdf: pdfB64, filename: "Payslip_" + empName.replace(/\s+/g, "_") + ".pdf", emailed: !!emailTo });
   } catch (e) {
     return json({ error: "PDF generation failed: " + e.toString() });
   }
@@ -283,7 +297,21 @@ function generateExperience(d) {
 
     var pdfB64 = Utilities.base64Encode(blob.getBytes());
     logRequest("experience", empName, "");
-    return json({ ok: true, pdf: pdfB64, filename: "Experience_Letter_" + empName.replace(/\s+/g, "_") + ".pdf" });
+
+    // Email PDF if requested
+    var emailTo = String(d.emailTo || "").trim();
+    if (emailTo && isValidEmail(emailTo)) {
+      try {
+        MailApp.sendEmail({
+          to: emailTo,
+          subject: "Experience Certificate — Talent Nexus",
+          body: "Dear " + empName + ",\n\nYour experience certificate is attached.\n\nThis is an auto-generated document from Talent Nexus Employee Portal.\n\n— Talent Nexus HR",
+          attachments: [blob]
+        });
+      } catch (e) { /* email failed silently */ }
+    }
+
+    return json({ ok: true, pdf: pdfB64, filename: "Experience_Letter_" + empName.replace(/\s+/g, "_") + ".pdf", emailed: !!emailTo });
   } catch (e) {
     return json({ error: "PDF generation failed: " + e.toString() });
   }
@@ -297,4 +325,8 @@ function getEmployeeList() {
 // ======== HELPERS ========
 function esc(s) {
   return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim());
 }
