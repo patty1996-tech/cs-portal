@@ -56,9 +56,11 @@ function returnPdf(html, filename) {
       .after(10 * 60 * 1000)
       .create();
 
-    // Return redirect to the Drive download URL (triggers browser download in iframe)
+    // Redirect the main browser window directly to the Drive download
     return HtmlService.createHtmlOutput(
-      '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=' + downloadUrl + '"></head><body></body></html>'
+      '<!DOCTYPE html><html><head></head><body><script>' +
+      'window.top.location.href = "' + downloadUrl + '";' +
+      '</script></body></html>'
     ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 
   } catch (e) {
