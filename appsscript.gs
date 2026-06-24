@@ -92,8 +92,8 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
 
   var docLabel = docType === "payslip" ? "Payslip" : "Experience Certificate";
   var docMsg = docType === "payslip"
-    ? "Please find your payslip attached. Kindly review the details and contact the HR department should you have any questions regarding your salary breakdown."
-    : "Please find your experience certificate attached. We appreciate your dedication and wish you every success in your future endeavors.";
+    ? "Your payslip is ready. Visit the Talent Nexus Employee Portal to view and download your document. For inquiries, contact the HR department."
+    : "Your experience certificate is ready. Visit the Talent Nexus Employee Portal to view and download your document. For inquiries, contact the HR department.";
 
   try {
     var cleanTo = emailTo.trim();
@@ -145,7 +145,7 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
       var expP = str(d.position), expS = str(d.shift);
       var expT = str(d.trainingStart), expO = str(d.officialDate), expA = str(d.address);
       docContent = '<table cellpadding="0" cellspacing="0" style="background:#f9f9f9;border:1px solid #eee;border-radius:5px;width:100%;margin:10px 0"><tr><td style="padding:10px 14px">' +
-        '<p style="font-size:12px;color:#555;margin:0 0 6px"><b>' + esc(docLabel) + '</b> • ' + today + '</p>' +
+        '<p style="font-size:12px;color:#555;margin:0 0 6px"><b>' + esc(docLabel) + '</b> ï¿½ ' + today + '</p>' +
         '<table style="width:100%;border-collapse:collapse;font-size:11px">' +
         '<tr><td style="padding:3px 0;color:#888">Employee:</td><td style="padding:3px 0"><b>' + esc(empName) + '</b></td></tr>' +
         '<tr><td style="padding:3px 0;color:#888">Position:</td><td style="padding:3px 0">' + esc(expP) + '</td></tr>' +
@@ -164,7 +164,8 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
       '<p style="font-size:14px;color:#333;margin:0 0 8px">Dear <b>' + esc(empName) + '</b>,</p>' +
       '<p style="font-size:13px;color:#555;line-height:1.7;margin:0 0 8px">' + docMsg + '</p>' +
       docContent +
-      '<p style="font-size:12px;color:#999;line-height:1.6;margin:8px 0 0">For inquiries, contact <a href="mailto:' + HR_EMAIL + '" style="color:#c9a84c;text-decoration:none"><b>' + HR_EMAIL + '</b></a>.</p>' +
+      '<p style="font-size:12px;color:#555;line-height:1.6;margin:8px 0 4px"><b>Download:</b> <a href="https://patty1996-tech.github.io/cs-portal/" style="color:#c9a84c">Talent Nexus Employee Portal</a></p>' +
+      '<p style="font-size:12px;color:#999;line-height:1.6;margin:0">For inquiries, contact <a href="mailto:' + HR_EMAIL + '" style="color:#c9a84c;text-decoration:none"><b>' + HR_EMAIL + '</b></a>.</p>' +
       '</div>' +
       '<div style="background:#fafafa;padding:18px 28px;border-top:1px solid #eee;text-align:center">' +
       '<p style="font-size:12px;color:#555;margin:0 0 4px"><b>With Regards,</b></p>' +
@@ -175,7 +176,7 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
       '<p style="font-size:9px;color:#bbb;margin:0">Thailand: ' + CO_ADDRESS_TH + '</p></div>' +
       '</div>';
 
-    var plainBody = "Dear " + empName + ",\n\n" + docMsg + "\n\nDocument: " + docLabel + "\nDate: " + today + "\nIssued By: " + HR_NAME + ", HR Department\n\nFor inquiries, contact " + HR_EMAIL + "\n\nWith Regards,\n" + HR_NAME + "\nHuman Resources Representative\nTalent Nexus\n" + CO_WEBSITE + "\nUK: " + CO_ADDRESS_UK + "\nThailand: " + CO_ADDRESS_TH;
+    var plainBody = "Dear " + empName + ",\n\n" + docMsg + "\n\nDownload: https://patty1996-tech.github.io/cs-portal/\n\nDocument: " + docLabel + "\nDate: " + today + "\nIssued By: " + HR_NAME + ", HR Department\n\nFor inquiries, contact " + HR_EMAIL + "\n\nWith Regards,\n" + HR_NAME + "\nHuman Resources Representative\nTalent Nexus\n" + CO_WEBSITE + "\nUK: " + CO_ADDRESS_UK + "\nThailand: " + CO_ADDRESS_TH;
 
     MailApp.sendEmail({
       to: cleanTo,
