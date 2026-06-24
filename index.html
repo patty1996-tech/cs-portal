@@ -315,12 +315,12 @@ textarea { min-height: 80px; resize: vertical; }
 
 </div>
 
+<!-- Hidden iframe for form POST (bypasses CORS — browser handles download natively) -->
+<iframe name="dlFrame" id="dlFrame" style="display:none;width:0;height:0;border:0;"></iframe>
+
 <script>
-// ======== CONFIGURATION ========
-// Replace with your deployed Apps Script URL after deployment
 var API_URL = "https://script.google.com/macros/s/AKfycbwmcwgEUU5dBaFiQkC0H1ZudIOkQUiiMOwdrLk6SevgdnkZTyndVrWz-yHmzGlK9A/exec";
 
-// ======== TAB SWITCHING ========
 function switchTab(tab) {
   document.getElementById("panel-payslip").style.display = tab === "payslip" ? "block" : "none";
   document.getElementById("panel-experience").style.display = tab === "experience" ? "block" : "none";
@@ -330,26 +330,21 @@ function switchTab(tab) {
   document.getElementById("exStatus").style.display = "none";
 }
 
-// ======== SALARY CALCULATION ========
 function calcSalary() {
   var basic = parseFloat(document.getElementById("psBasic").value) || 0;
   var allow = parseFloat(document.getElementById("psAllow").value) || 0;
   var bonus = parseFloat(document.getElementById("psBonus").value) || 0;
   var ot = parseFloat(document.getElementById("psOT").value) || 0;
   var comm = parseFloat(document.getElementById("psComm").value) || 0;
-
   var tax = parseFloat(document.getElementById("psTax").value) || 0;
   var epf = parseFloat(document.getElementById("psEpf").value) || 0;
   var ins = parseFloat(document.getElementById("psIns").value) || 0;
   var loan = parseFloat(document.getElementById("psLoan").value) || 0;
   var other = parseFloat(document.getElementById("psOther").value) || 0;
-
   var gross = basic + allow + bonus + ot + comm;
   var ded = tax + epf + ins + loan + other;
   var net = gross - ded;
-
   var fmt = function(n) { return "USD $" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
-
   document.getElementById("calcGross").textContent = fmt(gross);
   document.getElementById("calcDed").textContent = fmt(ded);
   document.getElementById("calcNet").textContent = fmt(net);
@@ -360,20 +355,56 @@ function updateMonthInfo() {
   document.getElementById("monthInfo").textContent = "— " + m + " page" + (m > 1 ? "s" : "") + " in PDF";
 }
 
-// ======== PAYSLIP GENERATION ========
+// ======== FORM POST (no CORS, no fetch — browser downloads PDF natively) ========
+function submitForm(action, fields, btnId, statusId) {
+  var btn = document.getElementById(btnId);
+  var statusEl = document.getElementById(statusId);
+  statusEl.style.display = "none";
+  btn.classList.add("loading");
+  btn.disabled = true;
+
+  // Build a form, submit to hidden iframe
+  var form = document.createElement("form");
+  form.method = "POST";
+  form.action = API_URL;
+  form.target = "dlFrame";
+  form.style.display = "none";
+
+  addHidden(form, "action", action);
+  for (var key in fields) {
+    if (fields.hasOwnProperty(key)) {
+      addHidden(form, key, fields[key]);
+    }
+  }
+
+  document.body.appendChild(form);
+  form.submit();
+  document.body.removeChild(form);
+
+  setTimeout(function() {
+    btn.classList.remove("loading");
+    btn.disabled = false;
+    showStatus(statusId, "PDF downloading... Check your downloads folder.", "success");
+  }, 2000);
+}
+
+function addHidden(form, name, value) {
+  var input = document.createElement("input");
+  input.type = "hidden";
+  input.name = name;
+  input.value = value;
+  form.appendChild(input);
+}
+
 function generatePayslip() {
   var name = document.getElementById("psName").value.trim();
   var empId = document.getElementById("psId").value.trim();
-
   if (!name || !empId) {
-    showStatus("psStatus", "Please fill in Employee Name and Employee ID (required fields).", "error");
+    showStatus("psStatus", "Please fill in Employee Name and Employee ID.", "error");
     return;
   }
-
-  var data = {
-    action: "generate_payslip",
-    employeeName: name,
-    employeeId: empId,
+  submitForm("generate_payslip", {
+    employeeName: name, employeeId: empId,
     department: document.getElementById("psDept").value.trim(),
     designation: document.getElementById("psDesig").value.trim(),
     payPeriodFrom: document.getElementById("psFrom").value.trim(),
@@ -393,25 +424,18 @@ function generatePayslip() {
     otherDeduction: document.getElementById("psOther").value,
     months: document.getElementById("psMonths").value,
     emailTo: document.getElementById("psEmail").value.trim()
-  };
-
-  callAPI(data, "btnPayslip", "psStatus");
+  }, "btnPayslip", "psStatus");
 }
 
-// ======== EXPERIENCE GENERATION ========
 function generateExperience() {
   var name = document.getElementById("exName").value.trim();
   var pos = document.getElementById("exPos").value.trim();
-
   if (!name || !pos) {
-    showStatus("exStatus", "Please fill in Employee Name and Position (required fields).", "error");
+    showStatus("exStatus", "Please fill in Employee Name and Position.", "error");
     return;
   }
-
-  var data = {
-    action: "generate_experience",
-    employeeName: name,
-    position: pos,
+  submitForm("generate_experience", {
+    employeeName: name, position: pos,
     shift: document.getElementById("exShift").value.trim(),
     trainingStart: document.getElementById("exTrain").value.trim(),
     officialDate: document.getElementById("exOfficial").value.trim(),
@@ -419,67 +443,7 @@ function generateExperience() {
     certDate: document.getElementById("exDate").value.trim(),
     bodyText: document.getElementById("exBody").value.trim(),
     emailTo: document.getElementById("exEmail").value.trim()
-  };
-
-  callAPI(data, "btnExp", "exStatus");
-}
-
-// ======== API CALL ========
-function callAPI(data, btnId, statusId) {
-  if (API_URL.indexOf("YOUR_APPS_SCRIPT_URL") !== -1 || API_URL.length < 20) {
-    showStatus(statusId, "API not configured. Please set the Apps Script URL in the code.", "error");
-    return;
-  }
-
-  var btn = document.getElementById(btnId);
-  var statusEl = document.getElementById(statusId);
-  statusEl.style.display = "none";
-  btn.classList.add("loading");
-  btn.disabled = true;
-
-  fetch(API_URL, {
-    method: "POST",
-    body: JSON.stringify(data),
-    headers: { "Content-Type": "application/json" }
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(res) {
-    btn.classList.remove("loading");
-    btn.disabled = false;
-
-    if (res.error) {
-      showStatus(statusId, res.error, "error");
-      return;
-    }
-
-    if (res.pdf) {
-      showStatus(statusId, "PDF generated successfully! Downloading...", "success");
-
-      // Download PDF
-      var byteChars = atob(res.pdf);
-      var byteNums = new Array(byteChars.length);
-      for (var i = 0; i < byteChars.length; i++) {
-        byteNums[i] = byteChars.charCodeAt(i);
-      }
-      var byteArr = new Uint8Array(byteNums);
-      var blob = new Blob([byteArr], { type: "application/pdf" });
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement("a");
-      a.href = url;
-      a.download = res.filename || "document.pdf";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } else {
-      showStatus(statusId, "Unknown response from server.", "error");
-    }
-  })
-  .catch(function(err) {
-    btn.classList.remove("loading");
-    btn.disabled = false;
-    showStatus(statusId, "Network error: " + err.message + ". Check your connection and API URL.", "error");
-  });
+  }, "btnExp", "exStatus");
 }
 
 function showStatus(id, msg, type) {
@@ -491,4 +455,3 @@ function showStatus(id, msg, type) {
 </script>
 </body>
 </html>
-

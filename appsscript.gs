@@ -1,28 +1,29 @@
 // CS Portal — Payslip & Experience Letter Generator
 // Deploy as Web App (Execute as: Me, Who has access: Anyone)
-// Connected to Google Sheet for logging
 
 var SHEET_ID = "1n6fDjRCi17yp0KQ9lP29ARtqJVg0V_YgV_l9m4FjiCw";
 
-// ======== ENTRY POINTS ========
 function doGet(e) {
-  return ContentService.createTextOutput("CS Employee Portal API v1.0 — Operational")
+  return ContentService.createTextOutput("CS Employee Portal API v1.1 — Operational")
     .setMimeType(ContentService.MimeType.TEXT);
 }
 
 function doPost(e) {
   try {
-    var d = JSON.parse(e.postData.contents);
+    // Accept both form-encoded (from website) and JSON (for testing)
+    var d = {};
+    if (e.postData && e.postData.type === "application/json") {
+      d = JSON.parse(e.postData.contents);
+    } else {
+      d = e.parameters || {};
+    }
     var action = d.action || "";
 
     if (action === "generate_payslip") {
-      return generatePayslip(d);
+      return returnPdf(generatePayslipHtml(d), "Payslip_" + safeFilename(d.employeeName || "Employee") + ".pdf");
     }
     if (action === "generate_experience") {
-      return generateExperience(d);
-    }
-    if (action === "get_employee_list") {
-      return getEmployeeList();
+      return returnPdf(generateExperienceHtml(d), "Experience_Letter_" + safeFilename(d.employeeName || "Employee") + ".pdf");
     }
     return json({ error: "Unknown action: " + action });
   } catch (err) {
@@ -35,117 +36,133 @@ function json(obj) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-// ======== LOGGING ========
-function logRequest(type, empName, empId) {
+// ======== RETURN PDF VIA DRIVE (reliable, no size limits, bypasses CORS) ========
+function returnPdf(html, filename) {
   try {
-    var ss = SpreadsheetApp.openById(SHEET_ID);
-    var s = ss.getSheetByName("RequestLog");
-    if (!s) {
-      s = ss.insertSheet("RequestLog");
-      s.appendRow(["Timestamp", "Type", "EmployeeName", "EmployeeID", "IP"]);
+    // Generate PDF
+    var blob = HtmlService.createHtmlOutput(html).getBlob()
+      .setName(filename).setContentType("application/pdf");
+
+    // Save to Drive with public link
+    var folder = getOrCreateFolder("CS_Portal_PDFs");
+    var file = folder.createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    var downloadUrl = "https://drive.google.com/uc?export=download&id=" + file.getId();
+
+    // Auto-cleanup old files after 10 minutes
+    ScriptApp.newTrigger("cleanupOldPdfs")
+      .timeBased()
+      .after(10 * 60 * 1000)
+      .create();
+
+    // Return redirect to the Drive download URL (triggers browser download in iframe)
+    return HtmlService.createHtmlOutput(
+      '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=' + downloadUrl + '"></head><body></body></html>'
+    ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+
+  } catch (e) {
+    return HtmlService.createHtmlOutput(
+      '<!DOCTYPE html><html><body><h3>Error generating PDF: ' + esc(e.toString()) + '</h3></body></html>'
+    ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+}
+
+function getOrCreateFolder(name) {
+  var folders = DriveApp.getFoldersByName(name);
+  if (folders.hasNext()) return folders.next();
+  return DriveApp.createFolder(name);
+}
+
+function cleanupOldPdfs() {
+  try {
+    var folder = getOrCreateFolder("CS_Portal_PDFs");
+    var files = folder.getFiles();
+    var cutoff = new Date(Date.now() - 15 * 60 * 1000); // 15 min ago
+    while (files.hasNext()) {
+      var f = files.next();
+      if (f.getDateCreated() < cutoff) f.setTrashed(true);
     }
-    s.appendRow([new Date(), type, empName, empId, ""]);
   } catch (e) { }
 }
 
-// ======== PAYSLIP PDF GENERATION ========
-function generatePayslip(d) {
-  var empName = String(d.employeeName || "").trim();
-  var empId = String(d.employeeId || "").trim();
-  var department = String(d.department || "").trim();
-  var designation = String(d.designation || "").trim();
-  var payPeriodFrom = String(d.payPeriodFrom || "").trim();
-  var payPeriodTo = String(d.payPeriodTo || "").trim();
-  var paymentDate = String(d.paymentDate || "").trim();
-  var bankName = String(d.bankName || "").trim();
-  var accountNumber = String(d.accountNumber || "").trim();
+// ======== EMAIL (called after PDF generation) ========
+function sendPdfEmail(to, subject, body, htmlContent, filename) {
+  if (!to || !isValidEmail(String(to).trim())) return false;
+  try {
+    var blob = HtmlService.createHtmlOutput(htmlContent).getBlob()
+      .setName(filename).setContentType("application/pdf");
+    MailApp.sendEmail({
+      to: String(to).trim(),
+      subject: subject,
+      body: body,
+      attachments: [blob]
+    });
+    return true;
+  } catch (e) { return false; }
+}
 
-  // Earnings
-  var basic = parseFloat(d.basicSalary) || 0;
-  var allowance = parseFloat(d.allowance) || 0;
-  var bonus = parseFloat(d.attendanceBonus) || 0;
-  var overtime = parseFloat(d.overtime) || 0;
-  var commission = parseFloat(d.commission) || 0;
+// ======== PAYSLIP HTML ========
+function generatePayslipHtml(d) {
+  var empName = str(d.employeeName);
+  var empId = str(d.employeeId);
+  var department = str(d.department);
+  var designation = str(d.designation);
+  var payPeriodFrom = str(d.payPeriodFrom);
+  var payPeriodTo = str(d.payPeriodTo);
+  var paymentDate = str(d.paymentDate);
+  var bankName = str(d.bankName);
+  var accountNumber = str(d.accountNumber);
+  var emailTo = str(d.emailTo);
 
-  // Deductions
-  var tax = parseFloat(d.tax) || 0;
-  var epf = parseFloat(d.epfEtf) || 0;
-  var insurance = parseFloat(d.insurance) || 0;
-  var loan = parseFloat(d.loanDeduction) || 0;
-  var otherDeduction = parseFloat(d.otherDeduction) || 0;
+  var basic = num(d.basicSalary);
+  var allowance = num(d.allowance);
+  var bonus = num(d.attendanceBonus);
+  var overtime = num(d.overtime);
+  var commission = num(d.commission);
+  var tax = num(d.tax);
+  var epf = num(d.epfEtf);
+  var insurance = num(d.insurance);
+  var loan = num(d.loanDeduction);
+  var otherDeduction = num(d.otherDeduction);
 
   var gross = basic + allowance + bonus + overtime + commission;
   var totalDeductions = tax + epf + insurance + loan + otherDeduction;
   var netPay = gross - totalDeductions;
 
-  var months = parseInt(d.months) || 1;
-  months = Math.max(1, Math.min(12, months));
+  var months = Math.max(1, Math.min(12, parseInt(d.months) || 1));
 
-  // Validate required fields
   if (!empName || !empId) {
-    return json({ error: "Employee Name and Employee ID are required." });
+    return "<h3>Error: Employee Name and Employee ID are required.</h3>";
   }
 
-  // Build multi-month payslip pages
+  // Build multi-month pages
   var pagesHtml = "";
   for (var m = 0; m < months; m++) {
     var monthLabel = months > 1 ? " (Month " + (m + 1) + " of " + months + ")" : "";
     pagesHtml += buildPayslipPage({
-      employeeName: empName,
-      employeeId: empId,
-      department: department,
-      designation: designation,
-      payPeriodFrom: payPeriodFrom,
-      payPeriodTo: payPeriodTo,
-      paymentDate: paymentDate,
-      bankName: bankName,
-      accountNumber: accountNumber,
-      basic: basic,
-      allowance: allowance,
-      bonus: bonus,
-      overtime: overtime,
-      commission: commission,
-      tax: tax,
-      epf: epf,
-      insurance: insurance,
-      loan: loan,
-      otherDeduction: otherDeduction,
-      gross: gross,
-      totalDeductions: totalDeductions,
-      netPay: netPay,
-      monthLabel: monthLabel,
-      isLast: (m === months - 1)
+      employeeName: empName, employeeId: empId,
+      department: department, designation: designation,
+      payPeriodFrom: payPeriodFrom, payPeriodTo: payPeriodTo,
+      paymentDate: paymentDate, bankName: bankName, accountNumber: accountNumber,
+      basic: basic, allowance: allowance, bonus: bonus, overtime: overtime,
+      commission: commission, tax: tax, epf: epf, insurance: insurance,
+      loan: loan, otherDeduction: otherDeduction,
+      gross: gross, totalDeductions: totalDeductions, netPay: netPay,
+      monthLabel: monthLabel, isLast: (m === months - 1)
     });
   }
 
-  var fullHtml = buildPayslipShell(pagesHtml);
+  logRequest("payslip", empName, empId);
 
-  try {
-    var blob = HtmlService.createHtmlOutput(fullHtml)
-      .setTitle("Payslip_" + empName.replace(/\s+/g, "_"))
-      .getBlob()
-      .setName("Payslip_" + empName.replace(/\s+/g, "_") + ".pdf");
-
-    var pdfB64 = Utilities.base64Encode(blob.getBytes());
-    logRequest("payslip", empName, empId);
-
-    // Email PDF if requested
-    var emailTo = String(d.emailTo || "").trim();
-    if (emailTo && isValidEmail(emailTo)) {
-      try {
-        MailApp.sendEmail({
-          to: emailTo,
-          subject: "Your Payslip — Talent Nexus",
-          body: "Dear " + empName + ",\n\nYour payslip for the period " + payPeriodFrom + " to " + payPeriodTo + " is attached.\n\nThis is an auto-generated document from Talent Nexus Employee Portal.\n\n— Talent Nexus HR",
-          attachments: [blob]
-        });
-      } catch (e) { /* email failed silently, PDF still returned */ }
-    }
-
-    return json({ ok: true, pdf: pdfB64, filename: "Payslip_" + empName.replace(/\s+/g, "_") + ".pdf", emailed: !!emailTo });
-  } catch (e) {
-    return json({ error: "PDF generation failed: " + e.toString() });
+  // Send email asynchronously
+  if (emailTo && isValidEmail(emailTo)) {
+    var payPeriod = payPeriodFrom + " to " + payPeriodTo;
+    sendPdfEmail(emailTo, "Your Payslip — Talent Nexus",
+      "Dear " + empName + ",\n\nYour payslip for " + payPeriod + " is attached.\n\n— Talent Nexus HR",
+      buildPayslipShell(pagesHtml), "Payslip_" + empName.replace(/\s+/g, "_") + ".pdf");
   }
+
+  return buildPayslipShell(pagesHtml);
 }
 
 function buildPayslipShell(pagesHtml) {
@@ -168,23 +185,14 @@ function buildPayslipShell(pagesHtml) {
     'table.summary td { padding: 5px 10px; font-size: 10pt; font-weight: 700; }' +
     'table.summary td.net { font-size: 13pt; color: #1a6b3c; }' +
     '.footer { margin-top: 20px; text-align: center; font-size: 7pt; color: #999; border-top: 1px solid #e0e0e0; padding-top: 8px; }' +
-    '.contact { font-size: 7pt; color: #888; margin-top: 3px; }' +
     '</style></head><body>' + pagesHtml + '</body></html>';
 }
 
 function buildPayslipPage(d) {
   var fmt = function(n) { return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
-
   return '<div class="page-break">' +
-    // Header
-    '<div class="header">' +
-    '<div class="company">TALENT NEXUS</div>' +
-    '<div class="tagline">Connecting Talent. Creating Impact.</div>' +
-    '</div>' +
-
-    '<div class="title">PAYSLIP ' + d.monthLabel + '</div>' +
-
-    // Employee Info
+    '<div class="header"><div class="company">TALENT NEXUS</div><div class="tagline">Connecting Talent. Creating Impact.</div></div>' +
+    '<div class="title">PAYSLIP ' + esc(d.monthLabel) + '</div>' +
     '<div class="section-title">Employee Information</div>' +
     '<table class="info">' +
     '<tr><td class="label">Employee Name</td><td>' + esc(d.employeeName) + '</td><td class="label">Employee ID</td><td>' + esc(d.employeeId) + '</td></tr>' +
@@ -192,52 +200,42 @@ function buildPayslipPage(d) {
     '<tr><td class="label">Pay Period</td><td>' + esc(d.payPeriodFrom) + ' — ' + esc(d.payPeriodTo) + '</td><td class="label">Payment Date</td><td>' + esc(d.paymentDate) + '</td></tr>' +
     '<tr><td class="label">Bank Name</td><td>' + esc(d.bankName) + '</td><td class="label">Account Number</td><td>' + esc(d.accountNumber) + '</td></tr>' +
     '</table>' +
-
-    // Salary Breakdown
     '<div class="section-title">Salary Breakdown</div>' +
     '<table class="salary">' +
     '<tr><th colspan="2">EARNINGS</th><th colspan="2">DEDUCTIONS</th></tr>' +
-    '<tr><td>Basic Salary</td><td class="amount">$' + fmt(d.basic) + '</td><td>Tax</td><td class="amount">' + (d.tax > 0 ? '$' + fmt(d.tax) : '—') + '</td></tr>' +
-    '<tr><td>Allowance</td><td class="amount">' + (d.allowance > 0 ? '$' + fmt(d.allowance) : '—') + '</td><td>EPF / ETF</td><td class="amount">' + (d.epf > 0 ? '$' + fmt(d.epf) : '—') + '</td></tr>' +
-    '<tr><td>Attendance Bonus</td><td class="amount">' + (d.bonus > 0 ? '$' + fmt(d.bonus) : '—') + '</td><td>Insurance</td><td class="amount">' + (d.insurance > 0 ? '$' + fmt(d.insurance) : '—') + '</td></tr>' +
-    '<tr><td>Overtime</td><td class="amount">' + (d.overtime > 0 ? '$' + fmt(d.overtime) : '—') + '</td><td>Loan Deduction</td><td class="amount">' + (d.loan > 0 ? '$' + fmt(d.loan) : '—') + '</td></tr>' +
-    '<tr><td>Commission</td><td class="amount">' + (d.commission > 0 ? '$' + fmt(d.commission) : '—') + '</td><td>Other Deduction</td><td class="amount">' + (d.otherDeduction > 0 ? '$' + fmt(d.otherDeduction) : '—') + '</td></tr>' +
+    '<tr><td>Basic Salary</td><td class="amount">$' + fmt(d.basic) + '</td><td>Tax</td><td class="amount">' + val(d.tax) + '</td></tr>' +
+    '<tr><td>Allowance</td><td class="amount">' + val(d.allowance) + '</td><td>EPF / ETF</td><td class="amount">' + val(d.epf) + '</td></tr>' +
+    '<tr><td>Attendance Bonus</td><td class="amount">' + val(d.bonus) + '</td><td>Insurance</td><td class="amount">' + val(d.insurance) + '</td></tr>' +
+    '<tr><td>Overtime</td><td class="amount">' + val(d.overtime) + '</td><td>Loan Deduction</td><td class="amount">' + val(d.loan) + '</td></tr>' +
+    '<tr><td>Commission</td><td class="amount">' + val(d.commission) + '</td><td>Other Deduction</td><td class="amount">' + val(d.otherDeduction) + '</td></tr>' +
     '</table>' +
-
-    // Pay Summary
     '<table class="summary" style="width:60%;float:right;">' +
     '<tr><td>Gross Salary</td><td style="text-align:right;">USD &nbsp;&nbsp; $' + fmt(d.gross) + '</td></tr>' +
     '<tr><td>Total Deductions</td><td style="text-align:right;">USD &nbsp;&nbsp; $' + fmt(d.totalDeductions) + '</td></tr>' +
     '<tr style="border-top:2px solid #1a1a2e;"><td>NET PAY</td><td class="net" style="text-align:right;">USD &nbsp;&nbsp; $' + fmt(d.netPay) + '</td></tr>' +
-    '</table>' +
-
-    '<div style="clear:both;"></div>' +
-
-    // Footer
-    '<div class="footer">' +
-    'This is a computer-generated payslip and does not require a signature.<br>' +
-    '<strong>TALENT NEXUS</strong> — Connecting Talent. Creating Impact.' +
-    '</div>' +
+    '</table><div style="clear:both;"></div>' +
+    '<div class="footer">This is a computer-generated payslip and does not require a signature.<br><strong>TALENT NEXUS</strong> — Connecting Talent. Creating Impact.</div>' +
     '</div>';
 }
 
-// ======== EXPERIENCE LETTER PDF GENERATION ========
-function generateExperience(d) {
-  var empName = String(d.employeeName || "").trim();
-  var position = String(d.position || "").trim();
-  var shift = String(d.shift || "").trim();
-  var trainingStart = String(d.trainingStart || "").trim();
-  var officialDate = String(d.officialDate || "").trim();
-  var address = String(d.address || "").trim();
-  var certDate = String(d.certDate || "").trim() || new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
-  var bodyText = String(d.bodyText || "").trim();
+// ======== EXPERIENCE LETTER HTML ========
+function generateExperienceHtml(d) {
+  var empName = str(d.employeeName);
+  var position = str(d.position);
+  var shift = str(d.shift);
+  var trainingStart = str(d.trainingStart);
+  var officialDate = str(d.officialDate);
+  var address = str(d.address);
+  var certDate = str(d.certDate) || new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  var bodyText = str(d.bodyText);
+  var emailTo = str(d.emailTo);
 
   if (!empName || !position) {
-    return json({ error: "Employee Name and Position are required." });
+    return "<h3>Error: Employee Name and Position are required.</h3>";
   }
 
   var defaultBody = "This is to certify that <b>" + esc(empName) + "</b> has been an employee of Talent Nexus. During their tenure, they displayed a high level of commitment, professionalism, and ethical conduct." +
-    "<br><br>As a member of the " + esc(d.shift || "the") + " team, " + esc(empName.split(" ")[0]) + " was responsible for managing operational tasks, maintaining quality standards, and ensuring efficient workflow. They completed their service tenure with dedication and reliability." +
+    "<br><br>As a member of the " + esc(shift || "the") + " team, " + esc(empName.split(" ")[0]) + " was responsible for managing operational tasks, maintaining quality standards, and ensuring efficient workflow. They completed their service tenure with dedication and reliability." +
     "<br><br>We found them to be hardworking, dedicated, and a reliable team member. Their character and conduct remained exemplary throughout their stay with us." +
     "<br><br>We wish them every success in their future professional endeavors.";
 
@@ -260,18 +258,11 @@ function generateExperience(d) {
     '.signature .role { font-size: 8pt; color: #666; }' +
     '.office { margin-top: 6px; font-size: 7.5pt; color: #888; }' +
     '</style></head><body>' +
-
-    '<div class="header">' +
-    '<div class="company">TALENT NEXUS</div>' +
-    '<div class="tagline">Connecting Talent. Creating Impact.</div>' +
-    '</div>' +
-
+    '<div class="header"><div class="company">TALENT NEXUS</div><div class="tagline">Connecting Talent. Creating Impact.</div></div>' +
     '<div class="title">EXPERIENCE CERTIFICATE</div>' +
     '<div class="date">Date: ' + esc(certDate) + '</div>' +
     '<div class="salutation">TO WHOM IT MAY CONCERN</div>' +
-
     '<div class="body-text">' + (bodyText || defaultBody) + '</div>' +
-
     '<table class="info">' +
     '<tr><td class="label">Position</td><td>' + esc(position) + '</td></tr>' +
     '<tr><td class="label">Shift</td><td>' + esc(shift) + '</td></tr>' +
@@ -279,54 +270,39 @@ function generateExperience(d) {
     '<tr><td class="label">Official Working Date</td><td>' + esc(officialDate) + '</td></tr>' +
     '<tr><td class="label">Address</td><td>' + esc(address) + '</td></tr>' +
     '</table>' +
-
-    '<div class="signature">' +
-    '<div class="line"></div>' +
-    '<div class="name">Human Resources Department</div>' +
-    '<div class="role">Authorized Signatory</div>' +
-    '<div class="office">Talent Nexus — Suite 10 and 11, The Sanctuary, 23 Oak Hill Grove, Surbiton, Surrey KT6 6DU</div>' +
-    '</div>' +
-
+    '<div class="signature"><div class="line"></div><div class="name">Human Resources Department</div><div class="role">Authorized Signatory</div>' +
+    '<div class="office">Talent Nexus — Suite 10 and 11, The Sanctuary, 23 Oak Hill Grove, Surbiton, Surrey KT6 6DU</div></div>' +
     '</body></html>';
 
-  try {
-    var blob = HtmlService.createHtmlOutput(html)
-      .setTitle("Experience_Letter_" + empName.replace(/\s+/g, "_"))
-      .getBlob()
-      .setName("Experience_Letter_" + empName.replace(/\s+/g, "_") + ".pdf");
+  logRequest("experience", empName, "");
 
-    var pdfB64 = Utilities.base64Encode(blob.getBytes());
-    logRequest("experience", empName, "");
-
-    // Email PDF if requested
-    var emailTo = String(d.emailTo || "").trim();
-    if (emailTo && isValidEmail(emailTo)) {
-      try {
-        MailApp.sendEmail({
-          to: emailTo,
-          subject: "Experience Certificate — Talent Nexus",
-          body: "Dear " + empName + ",\n\nYour experience certificate is attached.\n\nThis is an auto-generated document from Talent Nexus Employee Portal.\n\n— Talent Nexus HR",
-          attachments: [blob]
-        });
-      } catch (e) { /* email failed silently */ }
-    }
-
-    return json({ ok: true, pdf: pdfB64, filename: "Experience_Letter_" + empName.replace(/\s+/g, "_") + ".pdf", emailed: !!emailTo });
-  } catch (e) {
-    return json({ error: "PDF generation failed: " + e.toString() });
+  // Send email asynchronously
+  if (emailTo && isValidEmail(emailTo)) {
+    sendPdfEmail(emailTo, "Experience Certificate — Talent Nexus",
+      "Dear " + empName + ",\n\nYour experience certificate is attached.\n\n— Talent Nexus HR",
+      html, "Experience_Letter_" + empName.replace(/\s+/g, "_") + ".pdf");
   }
+
+  return html;
 }
 
-// ======== EMPLOYEE LIST ========
-function getEmployeeList() {
-  return json({ employees: [] });
+// ======== LOGGING ========
+function logRequest(type, empName, empId) {
+  try {
+    var ss = SpreadsheetApp.openById(SHEET_ID);
+    var s = ss.getSheetByName("RequestLog");
+    if (!s) {
+      s = ss.insertSheet("RequestLog");
+      s.appendRow(["Timestamp", "Type", "EmployeeName", "EmployeeID"]);
+    }
+    s.appendRow([new Date(), type, empName, empId]);
+  } catch (e) { }
 }
 
 // ======== HELPERS ========
-function esc(s) {
-  return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-
-function isValidEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim());
-}
+function esc(s) { return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+function str(v) { return String(v || "").trim(); }
+function num(v) { var n = parseFloat(v); return isNaN(n) ? 0 : n; }
+function val(n) { return n > 0 ? ("$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })) : "—"; }
+function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim()); }
+function safeFilename(s) { return String(s || "document").replace(/[^a-zA-Z0-9_\- ]/g, "").replace(/\s+/g, "_").substring(0, 80); }
