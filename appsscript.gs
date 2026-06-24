@@ -162,10 +162,33 @@ function generatePayslipHtml(d) {
 
   if (!empName || !empId) return "<h3>Error: Employee Name and Employee ID are required.</h3>";
 
+  // Parse the first month's dates for auto-progression
+  var startDate = parseDateFlex(pFrom);
+  var endDate = parseDateFlex(pTo);
+  var payDate = parseDateFlex(pDate);
+
   var pagesHtml = "";
   for (var m = 0; m < months; m++) {
-    var mlbl = months > 1 ? "Month " + (m+1) + " of " + months : "";
-    pagesHtml += payslipPage(empName, empId, dept, desig, pFrom, pTo, pDate, bank, acct, basic, allow, bonus, ot, comm, tax, epf, ins, loan, other, gross, totalDed, net, mlbl);
+    var mlbl = "";
+    var curFrom = pFrom, curTo = pTo, curPay = pDate;
+
+    if (startDate && endDate && months > 1) {
+      // Progress dates by m months
+      var s = new Date(startDate); s.setMonth(s.getMonth() + m);
+      var e = new Date(endDate); e.setMonth(e.getMonth() + m);
+      curFrom = fmtDate(s);
+      curTo = fmtDate(e);
+      mlbl = monthName(s) + " " + s.getFullYear();
+    } else if (months > 1) {
+      mlbl = "Month " + (m+1) + " of " + months;
+    }
+
+    if (payDate && months > 1) {
+      var p = new Date(payDate); p.setMonth(p.getMonth() + m);
+      curPay = fmtDate(p);
+    }
+
+    pagesHtml += payslipPage(empName, empId, dept, desig, curFrom, curTo, curPay, bank, acct, basic, allow, bonus, ot, comm, tax, epf, ins, loan, other, gross, totalDed, net, mlbl);
   }
 
   logRequest("payslip", empName, empId);
@@ -384,6 +407,33 @@ function str(v) { return String(v||"").trim(); }
 function num(v) { var n=parseFloat(v); return isNaN(n)?0:n; }
 function isValidEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e).trim()); }
 function safeFilename(s) { return String(s||"document").replace(/[^a-zA-Z0-9_\- ]/g,"").replace(/\s+/g,"_").substring(0,80); }
+
+function parseDateFlex(s) {
+  // Supports DD/MM/YY, DD-MM-YYYY, YYYY-MM-DD, etc.
+  if (!s) return null;
+  s = String(s).trim().replace(/-/g,"/");
+  var parts = s.split("/");
+  if (parts.length < 2) return null;
+  var a = parseInt(parts[0]), b = parseInt(parts[1]), c = parseInt(parts[2]||"0");
+  if (isNaN(a) || isNaN(b)) return null;
+  // If first part > 31, it's YYYY/MM/DD
+  if (a > 31) return new Date(a, b-1, c || 1);
+  // Otherwise DD/MM/YY or DD/MM/YYYY
+  var yr = c;
+  if (yr < 100) yr += 2000;
+  return new Date(yr, b-1, a);
+}
+
+function fmtDate(d) {
+  if (!d) return "";
+  var day = d.getDate(), mon = d.getMonth()+1, yr = d.getFullYear();
+  return (day<10?"0":"")+day+"/"+(mon<10?"0":"")+mon+"/"+String(yr).slice(-2);
+}
+
+function monthName(d) {
+  if (!d) return "";
+  return ["January","February","March","April","May","June","July","August","September","October","November","December"][d.getMonth()];
+}
 
 function numberToWords(n) {
   var ones=["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"];
