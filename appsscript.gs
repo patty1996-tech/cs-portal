@@ -141,6 +141,19 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
         '<tr><td style="padding:6px 14px;font-size:13px;font-weight:700;color:#1a1a2e">NET PAY</td><td style="padding:6px 14px;font-size:15px;font-weight:700;color:#1a6b3c;text-align:right">USD $' + fmt2(net) + '</td></tr>' +
         '</table>' +
         '</td></tr></table>';
+    } else {
+      var expP = str(d.position), expS = str(d.shift);
+      var expT = str(d.trainingStart), expO = str(d.officialDate), expA = str(d.address);
+      docContent = '<table cellpadding="0" cellspacing="0" style="background:#f9f9f9;border:1px solid #eee;border-radius:5px;width:100%;margin:10px 0"><tr><td style="padding:10px 14px">' +
+        '<p style="font-size:12px;color:#555;margin:0 0 6px"><b>' + esc(docLabel) + '</b> • ' + today + '</p>' +
+        '<table style="width:100%;border-collapse:collapse;font-size:11px">' +
+        '<tr><td style="padding:3px 0;color:#888">Employee:</td><td style="padding:3px 0"><b>' + esc(empName) + '</b></td></tr>' +
+        '<tr><td style="padding:3px 0;color:#888">Position:</td><td style="padding:3px 0">' + esc(expP) + '</td></tr>' +
+        '<tr><td style="padding:3px 0;color:#888">Shift:</td><td style="padding:3px 0">' + esc(expS) + '</td></tr>' +
+        '<tr><td style="padding:3px 0;color:#888">Training Start:</td><td style="padding:3px 0">' + esc(expT) + '</td></tr>' +
+        '<tr><td style="padding:3px 0;color:#888">Working Start:</td><td style="padding:3px 0">' + esc(expO) + '</td></tr>' +
+        '<tr><td style="padding:3px 0;color:#888">Address:</td><td style="padding:3px 0">' + esc(expA) + '</td></tr>' +
+        '</table></td></tr></table>';
     }
 
     var htmlBody = '<div style="font-family:Arial,Helvetica,sans-serif;max-width:540px;margin:0 auto;border:1px solid #e2e2e2;border-radius:8px;overflow:hidden;background:#fff">' +
