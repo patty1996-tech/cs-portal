@@ -246,7 +246,7 @@ function getLoginPage(errorMsg) {
 + '  .handlePortalLogin({tgName:n,tgId:i,password:p});'
 + '}'
 + '</script></body></html>';
-+}
+}
 
 // ==================== PORTAL PAGE (minimal) ====================
 
@@ -312,7 +312,7 @@ function getPortalPage(session) {
 + 'function genPs(){var d={employeeName:v("psName"),employeeId:v("psId"),department:v("psDept"),designation:v("psDesig"),payPeriodFrom:v("psFrom"),payPeriodTo:v("psTo"),paymentDate:v("psPayDate"),bankName:v("psBank"),accountNumber:v("psAcct"),basicSalary:v("psBasic"),allowance:v("psAllow"),attendanceBonus:v("psBonus"),overtime:v("psOT"),commission:v("psComm"),tax:v("psTax"),epfEtf:v("psEpf"),insurance:v("psIns"),loanDeduction:v("psLoan"),otherDeduction:v("psOther"),emailTo:v("psEmail"),months:"1"};if(!d.employeeName||!d.employeeId){var m=document.getElementById("psMsg");m.textContent="Name and ID required.";m.style.color="#ef4444";return}post("generate_payslip",d,"psBtn","psMsg")}'
 + 'function genEx(){var d={employeeName:v("exName"),position:v("exPos"),shift:v("exShift"),trainingStart:v("exTrain"),officialDate:v("exOfficial"),address:v("exAddr"),certDate:v("exDate"),bodyText:v("exBody"),emailTo:v("exEmail")};if(!d.employeeName||!d.position){var m=document.getElementById("exMsg");m.textContent="Name and Position required.";m.style.color="#ef4444";return}post("generate_experience",d,"exBtn","exMsg")}'
 + '</script></body></html>';
-+}
+}
 
 // ==================== PAYSLIP GENERATION ====================
 
