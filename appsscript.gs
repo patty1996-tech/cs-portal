@@ -25,17 +25,26 @@ function doGet(e) {
   if (session) {
     var s = validateSession(session);
     if (s) {
-      return HtmlService.createHtmlOutput(getPortalPage(s))
-        .setTitle("Talent Nexus — Portal")
-        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-        .addMetaTag('viewport','width=device-width,initial-scale=1');
+      try {
+        return HtmlService.createHtmlOutput(getPortalPage(s))
+          .setTitle("Talent Nexus — Portal")
+          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+          .addMetaTag('viewport','width=device-width,initial-scale=1');
+      } catch(e) {
+        return ContentService.createTextOutput("PORTAL PAGE ERROR: " + e.toString());
+      }
     }
   }
 
-  return HtmlService.createHtmlOutput(getLoginPage(str(p.error)))
-    .setTitle("Talent Nexus — Sign In")
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-    .addMetaTag('viewport','width=device-width,initial-scale=1');
+  try {
+    var loginHtml = getLoginPage(str(p.error));
+    return HtmlService.createHtmlOutput(loginHtml)
+      .setTitle("Talent Nexus — Sign In")
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+      .addMetaTag('viewport','width=device-width,initial-scale=1');
+  } catch(e) {
+    return ContentService.createTextOutput("LOGIN PAGE ERROR: " + e.toString());
+  }
 }
 
 function doPost(e) {
