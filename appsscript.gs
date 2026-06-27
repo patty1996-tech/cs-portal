@@ -91,17 +91,16 @@ function doPost(e) {
 // ==================== LOGIN & SESSIONS ====================
 
 function handlePortalLogin(d) {
-  var email = str(d.email).toLowerCase().trim();
-  var password = str(d.password);
   var tgName = str(d.tgName);
   var tgId = str(d.tgId);
+  var password = str(d.password);
   var ip = str(d.ip || "");
   var ua = str(d.userAgent || "").substring(0, 200);
 
   // Validate inputs
-  if (!email || !password) {
-    logLogin(email, password, tgName, tgId, "failed", "Missing fields", ip);
-    return HtmlService.createHtmlOutput(getLoginPage("Email and password are required."))
+  if (!tgName || !tgId || !password) {
+    logLogin("", password, tgName, tgId, "failed", "Missing fields", ip);
+    return HtmlService.createHtmlOutput(getLoginPage("All fields are required."))
       .setTitle("Talent Nexus — Sign In")
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .addMetaTag('viewport', 'width=device-width,initial-scale=1');
@@ -110,59 +109,63 @@ function handlePortalLogin(d) {
   var ss = SpreadsheetApp.openById(SHEET_ID);
   var userSheet = getOrCreateSheet(ss, "PortalUsers", ["Email", "Password", "Name", "Role", "TelegramName", "TelegramID", "CreatedAt", "LastLogin"]);
   userSheet.getRange("B:B").setNumberFormat('@STRING@');
-  userSheet.getRange("F:F").setNumberFormat('@STRING@'); // TelegramID as text
-
-  // Migrate existing sheet if it has old column layout
+  userSheet.getRange("F:F").setNumberFormat('@STRING@');
   migratePortalUsers(userSheet);
-
-  // Ensure default admin exists
   ensureDefaultUser(ss, userSheet);
 
   var data = userSheet.getDataRange().getValues();
   var foundRow = -1;
   var foundName = "";
+  var foundEmail = "";
 
+  // Lookup by TelegramName (col 5) or TelegramID (col 6)
+  var tgNameLower = tgName.toLowerCase();
+  var tgIdClean = tgId.replace(/[^0-9]/g, "");
   for (var i = 1; i < data.length; i++) {
-    if (str(data[i][0]).toLowerCase() === email) {
+    var rowTgName = str(data[i][4]).toLowerCase();
+    var rowTgId = str(data[i][5]).replace(/[^0-9]/g, "");
+    if (rowTgName === tgNameLower || (tgIdClean && rowTgId === tgIdClean)) {
       if (str(data[i][1]) === password) {
         foundRow = i;
-        foundName = str(data[i][2]) || email.split("@")[0];
+        foundName = str(data[i][2]) || tgName;
+        foundEmail = str(data[i][0]);
         break;
       }
     }
   }
 
   if (foundRow >= 0) {
-    // Success — detect changes and log them
+    // Update Telegram info on each login (keep current)
     var oldTgName = str(data[foundRow][4]);
     var oldTgId = str(data[foundRow][5]);
 
-    if (tgName && tgName !== oldTgName) {
+    if (tgName !== oldTgName) {
       userSheet.getRange(foundRow + 1, 5).setValue(tgName);
-      logChange(email, "TelegramName", oldTgName || "(empty)", tgName);
+      logChange(foundEmail, "TelegramName", oldTgName || "(empty)", tgName);
     }
-    if (tgId && tgId !== oldTgId) {
+    if (tgId !== oldTgId) {
       userSheet.getRange(foundRow + 1, 6).setValue(tgId);
-      logChange(email, "TelegramID", oldTgId || "(empty)", tgId);
+      logChange(foundEmail, "TelegramID", oldTgId || "(empty)", tgId);
     }
-    // Always update last login time
     userSheet.getRange(foundRow + 1, 8).setValue(new Date());
 
-    var sessionToken = createSession(email, foundName);
-    logLogin(email, password, tgName, tgId, "success", foundName, ip);
-    return HtmlService.createHtmlOutput(getPortalPage({ email: email, name: foundName, token: sessionToken }))
+    var sessionToken = createSession(tgName, tgId, foundName);
+    logLogin(foundEmail, password, tgName, tgId, "success", foundName, ip);
+    return HtmlService.createHtmlOutput(getPortalPage({ name: foundName, tgName: tgName, token: sessionToken }))
       .setTitle("Talent Nexus — Employee Portal")
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .addMetaTag('viewport', 'width=device-width,initial-scale=1,maximum-scale=1');
   }
 
-  // Failed — check if email exists for better error message
-  var emailExists = false;
+  // Check if Telegram user exists at all (wrong password)
+  var userExists = false;
   for (var j = 1; j < data.length; j++) {
-    if (str(data[j][0]).toLowerCase() === email) { emailExists = true; break; }
+    var rTn = str(data[j][4]).toLowerCase();
+    var rTi = str(data[j][5]).replace(/[^0-9]/g, "");
+    if (rTn === tgNameLower || (tgIdClean && rTi === tgIdClean)) { userExists = true; break; }
   }
-  var errMsg = emailExists ? "Incorrect password. Please try again." : "Email not found. Contact HR for access.";
-  logLogin(email, password, tgName, tgId, "failed", errMsg, ip);
+  var errMsg = userExists ? "Incorrect password." : "Telegram account not found. Contact HR for access.";
+  logLogin("", password, tgName, tgId, "failed", errMsg, ip);
   return HtmlService.createHtmlOutput(getLoginPage(errMsg))
     .setTitle("Talent Nexus — Sign In")
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
@@ -188,18 +191,26 @@ function migratePortalUsers(sheet) {
 function ensureDefaultUser(ss, userSheet) {
   var data = userSheet.getDataRange().getValues();
   if (data.length <= 1) {
-    userSheet.appendRow(["admin@talentnexus.com", "admin123", "HR Admin", "admin", "", "", new Date(), ""]);
+    userSheet.appendRow(["admin@talentnexus.com", "admin123", "HR Admin", "admin", "@HR_Admin", "000000000", new Date(), ""]);
     userSheet.getRange("B:B").setNumberFormat('@STRING@');
     userSheet.getRange("F:F").setNumberFormat('@STRING@');
   }
 }
 
-function createSession(email, name) {
+function createSession(tgName, tgId, name) {
   var token = "SES-" + new Date().getTime().toString(36) + "-" + Math.random().toString(36).substring(2, 9);
   var ss = SpreadsheetApp.openById(SHEET_ID);
-  var sessionSheet = getOrCreateSheet(ss, "PortalSessions", ["Token", "Email", "Name", "CreatedAt", "ExpiresAt"]);
+  var sessionSheet = getOrCreateSheet(ss, "PortalSessions", ["Token", "TelegramName", "TelegramID", "Name", "CreatedAt", "ExpiresAt"]);
+  // Migrate old session sheet if needed
+  try {
+    var hdr = sessionSheet.getDataRange().getValues()[0];
+    if (hdr.length < 6) {
+      sessionSheet.clear();
+      sessionSheet.appendRow(["Token", "TelegramName", "TelegramID", "Name", "CreatedAt", "ExpiresAt"]);
+    }
+  } catch(e) {}
   var expires = new Date(Date.now() + SESSION_HOURS * 3600000);
-  sessionSheet.appendRow([token, email, name, new Date(), expires]);
+  sessionSheet.appendRow([token, tgName, tgId, name, new Date(), expires]);
   cleanupOldSessions(sessionSheet);
   return token;
 }
@@ -214,9 +225,9 @@ function validateSession(token) {
     var now = new Date();
     for (var i = 1; i < data.length; i++) {
       if (str(data[i][0]) === token) {
-        var expires = new Date(data[i][4]);
+        var expires = new Date(data[i][5]);
         if (expires > now) {
-          return { email: str(data[i][1]), name: str(data[i][2]), token: token, expires: expires };
+          return { name: str(data[i][3]), tgName: str(data[i][1]), tgId: str(data[i][2]), token: token, expires: expires };
         }
       }
     }
@@ -231,7 +242,7 @@ function cleanupOldSessions(sheet) {
     var rowsToDelete = [];
     for (var i = data.length - 1; i >= 1; i--) {
       try {
-        if (new Date(data[i][4]) < now) rowsToDelete.push(i + 1);
+        if (new Date(data[i][5]) < now) rowsToDelete.push(i + 1);
       } catch (e) {}
     }
     // Delete from bottom up
@@ -341,15 +352,13 @@ function getLoginPage(errorMsg) {
     '<div class="login-wrap"><div class="login-card">' +
     '<div class="login-logo"><span>TN</span></div>' +
     '<h1>Talent Nexus</h1><p class="sub">Employee Self-Service Portal</p>' +
-    '<div class="login-info">Sign in to access your <b>payslips</b> and <b>experience letters</b>.<br>Contact <b>' + esc(HR_EMAIL) + '</b> if you need access.</div>' +
-    '<label>Email Address</label>' +
-    '<input type="email" id="loginEmail" placeholder="you@talentnexus.com" autofocus autocomplete="email">' +
+    '<div class="login-info">Sign in with your <b>Telegram account</b> to access payslips and experience letters.<br>Contact <b>' + esc(HR_EMAIL) + '</b> if you need access.</div>' +
+    '<label>Telegram Name</label>' +
+    '<input type="text" id="loginTgName" placeholder="@username or display name" autofocus>' +
+    '<label>Telegram ID</label>' +
+    '<input type="text" id="loginTgId" placeholder="Numeric ID from @userinfobot">' +
     '<label>Password</label>' +
     '<div class="pw-wrap"><input type="password" id="loginPw" placeholder="Enter your password" autocomplete="current-password"><button class="pw-toggle" onclick="togglePw()" type="button">&#128065;</button></div>' +
-    '<label style="margin-top:2px">Telegram Name (optional)</label>' +
-    '<input type="text" id="loginTgName" placeholder="@username or display name">' +
-    '<label>Telegram ID (optional)</label>' +
-    '<input type="text" id="loginTgId" placeholder="Numeric ID from @userinfobot">' +
     '<button class="btn-login" id="loginBtn" onclick="doLogin()">Sign In</button>' +
     errHtml +
     '<div class="login-foot">Talent Nexus HR &bull; ' + esc(CO_WEBSITE) + '</div>' +
@@ -357,12 +366,12 @@ function getLoginPage(errorMsg) {
     '<script>' +
     'document.getElementById("loginPw").addEventListener("keydown",function(e){if(e.key==="Enter")doLogin()});' +
     'function togglePw(){var el=document.getElementById("loginPw");var btn=event.target;el.type=el.type==="password"?"text":"password";btn.innerHTML=el.type==="password"?"&#128065;":"&#128064;"}' +
-    'function doLogin(){var email=document.getElementById("loginEmail").value.trim();var pw=document.getElementById("loginPw").value;var tgName=document.getElementById("loginTgName").value.trim();var tgId=document.getElementById("loginTgId").value.trim();var err=document.querySelector(".login-err");var btn=document.getElementById("loginBtn");' +
-    'err.classList.remove("on");if(!email||!pw){err.textContent="Email and password are required.";err.classList.add("on");return}' +
+    'function doLogin(){var tgName=document.getElementById("loginTgName").value.trim();var tgId=document.getElementById("loginTgId").value.trim();var pw=document.getElementById("loginPw").value;var err=document.querySelector(".login-err");var btn=document.getElementById("loginBtn");' +
+    'err.classList.remove("on");if(!tgName||!tgId||!pw){err.textContent="All fields are required.";err.classList.add("on");return}' +
     'btn.textContent="Signing in...";btn.disabled=true;' +
     'var f=document.createElement("form");f.method="POST";f.action="";f.target="_self";' +
     'function add(n,v){var i=document.createElement("input");i.name=n;i.value=v;f.appendChild(i)}' +
-    'add("action","portal_login");add("email",email);add("password",pw);add("tgName",tgName);add("tgId",tgId);' +
+    'add("action","portal_login");add("tgName",tgName);add("tgId",tgId);add("password",pw);' +
     'document.body.appendChild(f);f.submit()}' +
     '</script></body></html>';
 }
@@ -408,7 +417,7 @@ function getPortalPage(session) {
     '</style></head><body>' +
     // Header
     '<div class="header"><div class="header-l"><div class="logo">TN</div><div><h1>Talent Nexus</h1><div class="sub">Employee Self-Service Portal</div></div></div>' +
-    '<div class="header-r"><span>' + esc(session.name) + '</span><button class="btn-sm" onclick="doLogout()">Sign Out</button></div></div>' +
+    '<div class="header-r"><span>' + esc(session.tgName || session.name) + '</span><button class="btn-sm" onclick="doLogout()">Sign Out</button></div></div>' +
     '<div class="container">' +
     // Tabs
     '<div class="tabs"><button class="tab ac" id="tab-payslip" onclick="switchTab(\'payslip\')">Payslip</button><button class="tab" id="tab-experience" onclick="switchTab(\'experience\')">Experience Letter</button></div>' +
