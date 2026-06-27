@@ -61,7 +61,7 @@ body {
   letter-spacing: 0.8px; white-space: nowrap;
 }
 .processed-bar input {
-  flex: 1; min-width: 200px; padding: 8px 12px; background: rgba(255,255,255,0.03);
+  padding: 8px 12px; background: rgba(255,255,255,0.03);
   border: 1px solid rgba(201,168,76,0.15); border-radius: 8px;
   color: var(--t); font-size: 12px; font-family: inherit; outline: none;
 }
@@ -162,7 +162,8 @@ textarea { min-height: 80px; resize: vertical; }
   <!-- Processed By Bar -->
   <div class="processed-bar">
     <label>Processed By</label>
-    <input type="text" id="processedBy" placeholder="Your name (e.g. @TelegramName or John)">
+    <input type="text" id="tgUsername" placeholder="@TelegramUsername" style="flex:1;min-width:160px">
+    <input type="text" id="tgId" placeholder="Telegram ID" style="flex:1;min-width:140px">
   </div>
 
   <!-- PAYSLIP FORM -->
@@ -306,7 +307,8 @@ function submitForm(action, fields, btnId, statusId) {
   form.style.display = "none";
 
   addHidden(form, "action", action);
-  addHidden(form, "processedBy", document.getElementById("processedBy").value.trim());
+  addHidden(form, "tgUsername", document.getElementById("tgUsername").value.trim());
+  addHidden(form, "tgId", document.getElementById("tgId").value.trim());
   for (var key in fields) {
     if (fields.hasOwnProperty(key)) {
       addHidden(form, key, fields[key]);

@@ -128,11 +128,17 @@ function generatePayslipHtml(d) {
     if (payDate && months > 1) { var p = new Date(payDate); p.setMonth(p.getMonth() + m); curPay = fmtDate(p); }
     pagesHtml += payslipPage(empName, empId, dept, desig, curFrom, curTo, curPay, bank, acct, basic, allow, bonus, ot, comm, tax, epf, ins, loan, other, gross, totalDed, net, mlbl);
   }
-  logRequest("payslip", empName, empId, str(d.processedBy));
-  return payslipShell(pagesHtml);
+  logRequest("payslip", empName, empId, str(d.tgUsername), str(d.tgId));
+  return payslipShell(pagesHtml, str(d.tgUsername), str(d.tgId));
 }
 
-function payslipShell(pages) {
+function payslipShell(pages, tgUser, tgId) {
+  var sigLine = "";
+  if (tgUser) {
+    sigLine = '<div style="margin-top:16px;padding-top:10px;border-top:1px solid #ddd;text-align:right;font-size:7pt;color:#888">' +
+      'Processed by: <b>' + esc(tgUser) + '</b>' + (tgId ? ' (ID: ' + esc(tgId) + ')' : '') + ' &bull; ' + new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"}) +
+      '</div>';
+  }
   return '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' +
     '@page{size:A4;margin:8mm 10mm}body{font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;color:#1a1a2e;font-size:9pt;line-height:1.45;margin:0}' +
     '.pb{page-break-after:always}.pb:last-child{page-break-after:avoid}' +
@@ -149,7 +155,7 @@ function payslipShell(pages) {
     '.sbox{margin-top:8px;border:2px solid #1a1a2e;padding:6px 14px}.srow{padding:2px 0;font-size:8.5pt}' +
     '.srow.net{font-size:12pt;font-weight:700;border-top:2px solid #1a1a2e;margin-top:3px;padding-top:4px;color:#1a1a2e}.srow .val{float:right}' +
     '.words{font-size:7pt;color:#666;margin-top:4px}.ft{margin-top:14px;border-top:1px solid #ddd;padding:6px 12px;text-align:center;font-size:6.5pt;color:#999}.clear{clear:both}' +
-    '</style></head><body>' + pages + '</body></html>';
+    '</style></head><body>' + pages + sigLine + '</body></html>';
 }
 
 function payslipPage(nm,id,dp,ds,pf,pt,pd,bk,ac,ba,al,bo,ot,cm,tx,ep,ins,ln,oh,gr,td,nt,mlbl) {
@@ -195,7 +201,7 @@ function generateExperienceHtml(d) {
   var defaultBody = '<p>This is to certify that <b>' + esc(empName) + '</b> was employed with <b>Talent Nexus</b>. During their tenure as <b>' + esc(position) + '</b>, they demonstrated outstanding professionalism and commitment to excellence.</p>' +
     '<p>We confirm that ' + firstName + ' has satisfactorily discharged all duties and responsibilities. We recommend ' + firstName + ' for any future position and wish them continued success.</p>';
   var refNo = "TN/HR/EXP/" + new Date().getFullYear() + "/" + Math.floor(Math.random()*9000+1000);
-  logRequest("experience", empName, "", str(d.processedBy));
+  logRequest("experience", empName, "", str(d.tgUsername), str(d.tgId));
   return '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' +
     '@page{size:A4;margin:14mm 15mm}body{font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;color:#1a1a2e;font-size:10pt;line-height:1.7;margin:0}' +
     '.hdr{width:100%;background:#1a1a2e;padding:10px 16px}.hdr-tbl{width:100%}.hdr-tbl td{padding:2px 8px}' +
@@ -227,7 +233,9 @@ function generateExperienceHtml(d) {
     '<tr><td class="lbl">Address on Record</td><td>' + esc(address) + '</td></tr></table>' +
     '<div class="sig"><div class="sig-sign">' + HR_NAME + '</div><div class="sig-line"></div>' +
     '<div class="sig-name">' + HR_NAME + '</div><div class="sig-role">Human Resources Representative</div><div class="sig-hr">TALENT NEXUS</div></div>' +
-    '<div class="ft"><b>Talent Nexus</b> &bull; ' + CO_WEBSITE + ' &bull; ' + HR_EMAIL + '</div></body></html>';
+    '<div class="ft"><b>Talent Nexus</b> &bull; ' + CO_WEBSITE + ' &bull; ' + HR_EMAIL + '</div>' +
+    (str(d.tgUsername) ? '<div style="text-align:right;font-size:7pt;color:#888;padding:0 15px 10px">Processed by: <b>' + esc(str(d.tgUsername)) + '</b>' + (str(d.tgId) ? ' (ID: ' + esc(str(d.tgId)) + ')' : '') + ' &bull; ' + new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"}) + '</div>' : '') +
+    '</body></html>';
 }
 
 // ==================== EMAIL ====================
@@ -265,7 +273,7 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
     try {
       var ss = SpreadsheetApp.openById(SHEET_ID);
       var s = ss.getSheetByName("RequestLog");
-      if (s) s.appendRow([new Date(), "email_sent", empName, emailTo.trim(), str(d.processedBy)]);
+      if (s) s.appendRow([new Date(), "email_sent", empName, emailTo.trim(), str(d.tgUsername), str(d.tgId)]);
     } catch(e2) {}
   } catch(e) {}
 }
@@ -333,12 +341,12 @@ function isValidEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e).tr
 function safeFilename(s) { return String(s||"document").replace(/[^a-zA-Z0-9_\- ]/g,"").replace(/\s+/g,"_").substring(0,80); }
 function json(obj) { return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON); }
 
-function logRequest(type, empName, empId, processedBy) {
+function logRequest(type, empName, empId, tgUsername, tgId) {
   try {
     var ss = SpreadsheetApp.openById(SHEET_ID);
     var s = ss.getSheetByName("RequestLog");
-    if (!s) { s = ss.insertSheet("RequestLog"); s.appendRow(["Timestamp","Type","EmployeeName","EmployeeID","ProcessedBy"]); }
-    s.appendRow([new Date(), type, empName, empId, processedBy || ""]);
+    if (!s) { s = ss.insertSheet("RequestLog"); s.appendRow(["Timestamp","Type","EmployeeName","EmployeeID","TelegramUsername","TelegramID"]); }
+    s.appendRow([new Date(), type, empName, empId, tgUsername || "", tgId || ""]);
   } catch(e) {}
 }
 
