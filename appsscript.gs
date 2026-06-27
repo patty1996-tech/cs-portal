@@ -8,9 +8,60 @@ var CO_WEBSITE = "www.talentnexus.com";
 var CO_ADDRESS_UK = "Suite 10 & 11, The Sanctuary, 23 Oak Hill Grove, Surbiton, Surrey KT6 6DU, United Kingdom";
 var CO_ADDRESS_TH = "The Offices at CentralWorld, 999/9 Rama I Road, 28th Floor, Pathum Wan, Bangkok 10330, Thailand";
 
+var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwtcjR_XMIyZFixa3RymCqIymRP6csBSuVoGGb8UyDo69iIJaQtjwHYqce7tn-S-gjZ/exec";
+
 function doGet(e) {
-  return ContentService.createTextOutput("CS Employee Portal API v2.0 — Operational")
+  var p = e.parameter || {};
+  var token = str(p.token);
+
+  if (token) {
+    try {
+      var ss = SpreadsheetApp.openById(SHEET_ID);
+      var s = ss.getSheetByName("DocumentTokens");
+      if (!s) return pdfError("Token not found or expired.");
+      var data = s.getDataRange().getValues();
+      var found = null;
+      for (var i = 1; i < data.length; i++) {
+        if (str(data[i][0]) === token) {
+          found = { type: str(data[i][1]), payload: str(data[i][2]) };
+          break;
+        }
+      }
+      if (!found) return pdfError("Token not found or expired.");
+
+      if (found.type === "payslip") {
+        var d = JSON.parse(found.payload);
+        var html = generatePayslipHtml(d);
+        var startDt = parseDateFlex(str(d.payPeriodFrom));
+        var periodName = startDt ? (monthName(startDt) + "_" + startDt.getFullYear()) : "Monthly";
+        var filename = safeFilename(d.employeeName || "Employee") + "_" + periodName + "_Payslip.pdf";
+        return returnPdf(html, filename);
+      }
+      if (found.type === "experience") {
+        var d2 = JSON.parse(found.payload);
+        var html2 = generateExperienceHtml(d2);
+        var filename2 = safeFilename(d2.employeeName || "Employee") + "_Experience_Letter.pdf";
+        return returnPdf(html2, filename2);
+      }
+      return pdfError("Unknown document type.");
+    } catch (err) {
+      return pdfError(err.toString());
+    }
+  }
+
+  return ContentService.createTextOutput("CS Employee Portal API v2.1 — Operational")
     .setMimeType(ContentService.MimeType.TEXT);
+}
+
+function pdfError(msg) {
+  return HtmlService.createHtmlOutput(
+    '<!DOCTYPE html><html><body style="font-family:Arial;padding:40px;text-align:center">' +
+    '<h3 style="color:#c0392b">Document Unavailable</h3>' +
+    '<p style="color:#666">' + esc(msg) + '</p>' +
+    '<p style="color:#999;font-size:12px">Tokens expire after 7 days. Please generate a new document from the portal.</p>' +
+    '<a href="https://bit.ly/TNPortal" style="color:#c9a84c">Go to Talent Nexus Portal</a>' +
+    '</body></html>'
+  ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 function doPost(e) {
@@ -48,7 +99,6 @@ function json(obj) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-// ======== PDF RETURN (displays document + auto-print for PDF save) ========
 function returnPdf(html, filename) {
   try {
     var cleanTitle = filename.replace(/\.pdf$/,"").replace(/_/g," ");
@@ -83,25 +133,25 @@ function returnPdf(html, filename) {
   }
 }
 
-// ======== EMAIL ========
 function sendEmailIfRequested(d, htmlContent, filename, docType) {
   var emailTo = str(d.emailTo);
   if (!emailTo || !isValidEmail(emailTo)) return;
   var empName = str(d.employeeName) || "Employee";
   var today = new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"});
 
+  var token = storeDocumentToken(docType, d);
+  var docLink = APPS_SCRIPT_URL + "?token=" + encodeURIComponent(token);
+
   var docLabel = docType === "payslip" ? "Payslip" : "Experience Certificate";
   var docMsg = docType === "payslip"
-    ? "Your payslip is ready. Visit the Talent Nexus Employee Portal to view and download your document. For inquiries, contact the HR department."
-    : "Your experience certificate is ready. Visit the Talent Nexus Employee Portal to view and download your document. For inquiries, contact the HR department.";
+    ? "Your payslip is ready. Click the Download button below to view, print, or save your document. For inquiries, contact the HR department."
+    : "Your experience certificate is ready. Click the Download button below to view, print, or save your document. For inquiries, contact the HR department.";
 
   try {
     var cleanTo = emailTo.trim();
 
-    // Embed payslip content into email body for direct viewing
     var docContent = "";
     if (docType === "payslip") {
-      // Extract salary info for inline display
       var basic = num(d.basicSalary), allow = num(d.allowance), bonus = num(d.attendanceBonus);
       var otAmt = num(d.overtime), comm = num(d.commission);
       var taxAmt = num(d.tax), epfAmt = num(d.epfEtf), insAmt = num(d.insurance);
@@ -145,7 +195,7 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
       var expP = str(d.position), expS = str(d.shift);
       var expT = str(d.trainingStart), expO = str(d.officialDate), expA = str(d.address);
       docContent = '<table cellpadding="0" cellspacing="0" style="background:#f9f9f9;border:1px solid #eee;border-radius:5px;width:100%;margin:10px 0"><tr><td style="padding:10px 14px">' +
-        '<p style="font-size:12px;color:#555;margin:0 0 6px"><b>' + esc(docLabel) + '</b> � ' + today + '</p>' +
+        '<p style="font-size:12px;color:#555;margin:0 0 6px"><b>' + esc(docLabel) + '</b> &bull; ' + today + '</p>' +
         '<table style="width:100%;border-collapse:collapse;font-size:11px">' +
         '<tr><td style="padding:3px 0;color:#888">Employee:</td><td style="padding:3px 0"><b>' + esc(empName) + '</b></td></tr>' +
         '<tr><td style="padding:3px 0;color:#888">Position:</td><td style="padding:3px 0">' + esc(expP) + '</td></tr>' +
@@ -163,17 +213,16 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
       '<div style="padding:24px 28px">' +
       '<p style="font-size:14px;color:#333;margin:0 0 8px">Dear <b>' + esc(empName) + '</b>,</p>' +
       '<p style="font-size:13px;color:#555;line-height:1.7;margin:0 0 8px">' + docMsg + '</p>' +
-      // Preview card
       '<table cellpadding="0" cellspacing="0" style="background:#fafafa;border:1px solid #e0e0e0;border-radius:6px;width:100%;margin:10px 0"><tr>' +
       '<td style="width:90px;background:#1a1a2e;text-align:center;vertical-align:middle;padding:16px 0;border-radius:6px 0 0 6px">' +
       '<span style="color:#c9a84c;font-size:28px;font-weight:900">TN</span></td>' +
       '<td style="padding:14px 16px;vertical-align:middle">' +
       '<p style="font-size:12px;font-weight:700;color:#1a1a2e;margin:0 0 4px">' + esc(docLabel) + ' Ready</p>' +
       '<p style="font-size:11px;color:#888;margin:0 0 8px">' + esc(empName) + ' &bull; ' + today + '</p>' +
-      '<a href="https://bit.ly/TNPortal" style="display:inline-block;background:#c9a84c;color:#fff;padding:6px 18px;border-radius:4px;text-decoration:none;font-size:11px;font-weight:600">Download</a>' +
+      '<a href="' + docLink + '" style="display:inline-block;background:#c9a84c;color:#fff;padding:6px 18px;border-radius:4px;text-decoration:none;font-size:11px;font-weight:600">Download</a>' +
       '</td></tr></table>' +
       docContent +
-      '<p style="font-size:12px;color:#555;line-height:1.6;margin:8px 0 4px"><b>Download:</b> <a href="https://bit.ly/TNPortal" style="color:#c9a84c">Talent Nexus Employee Portal</a></p>' +
+      '<p style="font-size:12px;color:#555;line-height:1.6;margin:8px 0 4px"><b>Download:</b> <a href="' + docLink + '" style="color:#c9a84c">View & Print Document</a></p>' +
       '<p style="font-size:12px;color:#999;line-height:1.6;margin:0">For inquiries, contact <a href="mailto:' + HR_EMAIL + '" style="color:#c9a84c;text-decoration:none"><b>' + HR_EMAIL + '</b></a>.</p>' +
       '</div>' +
       '<div style="background:#fafafa;padding:18px 28px;border-top:1px solid #eee;text-align:center">' +
@@ -185,7 +234,7 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
       '<p style="font-size:9px;color:#bbb;margin:0">Thailand: ' + CO_ADDRESS_TH + '</p></div>' +
       '</div>';
 
-    var plainBody = "Dear " + empName + ",\n\n" + docMsg + "\n\nDownload: https://bit.ly/TNPortal\n\nDocument: " + docLabel + "\nDate: " + today + "\nIssued By: " + HR_NAME + ", HR Department\n\nFor inquiries, contact " + HR_EMAIL + "\n\nWith Regards,\n" + HR_NAME + "\nHuman Resources Representative\nTalent Nexus\n" + CO_WEBSITE + "\nUK: " + CO_ADDRESS_UK + "\nThailand: " + CO_ADDRESS_TH;
+    var plainBody = "Dear " + empName + ",\n\n" + docMsg + "\n\nView & Print: " + docLink + "\n\nDocument: " + docLabel + "\nDate: " + today + "\nIssued By: " + HR_NAME + ", HR Department\n\nFor inquiries, contact " + HR_EMAIL + "\n\nWith Regards,\n" + HR_NAME + "\nHuman Resources Representative\nTalent Nexus\n" + CO_WEBSITE + "\nUK: " + CO_ADDRESS_UK + "\nThailand: " + CO_ADDRESS_TH;
 
     MailApp.sendEmail({
       to: cleanTo,
@@ -210,9 +259,6 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
   }
 }
 
-// ==========================================
-// PAYSLIP TEMPLATE — Clean, Modern, Professional
-// ==========================================
 function generatePayslipHtml(d) {
   var empName = str(d.employeeName), empId = str(d.employeeId);
   var dept = str(d.department), desig = str(d.designation);
@@ -231,7 +277,6 @@ function generatePayslipHtml(d) {
 
   if (!empName || !empId) return "<h3>Error: Employee Name and Employee ID are required.</h3>";
 
-  // Parse the first month's dates for auto-progression
   var startDate = parseDateFlex(pFrom);
   var endDate = parseDateFlex(pTo);
   var payDate = parseDateFlex(pDate);
@@ -242,7 +287,6 @@ function generatePayslipHtml(d) {
     var curFrom = pFrom, curTo = pTo, curPay = pDate;
 
     if (startDate && endDate && months > 1) {
-      // Progress dates by m months
       var s = new Date(startDate); s.setMonth(s.getMonth() + m);
       var e = new Date(endDate); e.setMonth(e.getMonth() + m);
       curFrom = fmtDate(s);
@@ -269,7 +313,6 @@ function payslipShell(pages) {
     '@page{size:A4;margin:8mm 10mm}' +
     'body{font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;color:#1a1a2e;font-size:9pt;line-height:1.45;margin:0}' +
     '.pb{page-break-after:always}.pb:last-child{page-break-after:avoid}' +
-    // Header bar
     '.hdr{width:100%;background:#1a1a2e;padding:10px 0}' +
     '.hdr-tbl{width:100%}.hdr-tbl td{padding:4px 12px}' +
     '.hdr-logo{width:34px;height:34px;background:#c9a84c;text-align:center;color:#fff;font-weight:900;font-size:15px}' +
@@ -277,29 +320,22 @@ function payslipShell(pages) {
     '.hdr-tag{color:#c9a84c;font-size:6.5pt;text-transform:uppercase;letter-spacing:1.5px}' +
     '.hdr-label{text-align:right;color:#c9a84c;font-size:11pt;font-weight:700;letter-spacing:1.5px;text-transform:uppercase}' +
     '.hdr-month{text-align:right;color:#999;font-size:7pt}' +
-    // Content area
     '.ctn{padding:6px 12px}' +
-    // Section title
     '.sec{font-size:7.5pt;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#8b6914;border-bottom:1.5px solid #1a1a2e;padding-bottom:2px;margin:10px 0 5px}' +
-    // Info table
     '.itbl{width:100%;border-collapse:collapse;border:1px solid #ddd;margin-bottom:6px}' +
     '.itbl td{padding:4px 8px;font-size:8pt;border:1px solid #eee}' +
     '.itbl td.lbl{background:#f8f8f8;font-weight:600;color:#555;width:22%;font-size:7pt}' +
-    // Salary table
     '.stbl{width:100%;border-collapse:collapse;margin-bottom:4px}' +
     '.stbl th{background:#1a1a2e;color:#c9a84c;padding:5px 10px;font-size:7.5pt;text-transform:uppercase;letter-spacing:0.5px;text-align:left}' +
     '.stbl th.rt{text-align:right}' +
     '.stbl td{padding:4px 10px;font-size:8pt;border-bottom:1px solid #eee}' +
     '.stbl td.rt{text-align:right}' +
     '.stbl tr.sub td{font-weight:700;border-top:2px solid #1a1a2e;border-bottom:0}' +
-    // Summary box
     '.sbox{margin-top:8px;border:2px solid #1a1a2e;padding:6px 14px}' +
     '.srow{padding:2px 0;font-size:8.5pt}' +
     '.srow.net{font-size:12pt;font-weight:700;border-top:2px solid #1a1a2e;margin-top:3px;padding-top:4px;color:#1a1a2e}' +
     '.srow .val{float:right}' +
-    // Words
     '.words{font-size:7pt;color:#666;margin-top:4px}' +
-    // Footer
     '.ft{margin-top:14px;border-top:1px solid #ddd;padding:6px 12px;text-align:center;font-size:6.5pt;color:#999}' +
     '.clear{clear:both}' +
     '</style></head><body>' + pages + '</body></html>';
@@ -314,7 +350,6 @@ function payslipPage(nm,id,dp,ds,pf,pt,pd,bk,ac,ba,al,bo,ot,cm,tx,ep,ins,ln,oh,g
   var monthsLabel = mlbl || "";
 
   return '<div class="pb">' +
-    // HEADER
     '<table class="hdr-tbl"><tr>' +
     '<td width="40"><table><tr><td class="hdr-logo">TN</td></tr></table></td>' +
     '<td><div class="hdr-co">TALENT NEXUS</div><div class="hdr-tag">Connecting Talent. Creating Impact.</div></td>' +
@@ -323,7 +358,6 @@ function payslipPage(nm,id,dp,ds,pf,pt,pd,bk,ac,ba,al,bo,ot,cm,tx,ep,ins,ln,oh,g
 
     '<div class="ctn">' +
 
-    // EMPLOYEE INFO
     '<div class="sec">Employee Information</div>' +
     '<table class="itbl">' +
     nfo('Employee Name',nm) + nfo('Employee ID',id) +
@@ -332,7 +366,6 @@ function payslipPage(nm,id,dp,ds,pf,pt,pd,bk,ac,ba,al,bo,ot,cm,tx,ep,ins,ln,oh,g
     nfo('Bank Name',bk) + nfo('Account Number',ac) +
     '</table>' +
 
-    // SALARY — side by side tables
     '<table width="100%"><tr><td width="50%" style="vertical-align:top;padding-right:6px">' +
     '<table class="stbl"><thead><tr><th>EARNINGS</th><th class="rt">AMOUNT (USD)</th></tr></thead><tbody>' +
     row('Basic Salary',amt(ba)) + row('Allowance',amt(al)) + row('Attendance Bonus',amt(bo)) +
@@ -347,7 +380,6 @@ function payslipPage(nm,id,dp,ds,pf,pt,pd,bk,ac,ba,al,bo,ot,cm,tx,ep,ins,ln,oh,g
     '</tbody></table>' +
     '</td></tr></table>' +
 
-    // NET PAY BOX
     '<div class="sbox">' +
     '<div class="srow"><span>Gross Salary</span><span class="val">USD &nbsp; $'+fmt(gr)+'</span></div><div class="clear"></div>' +
     '<div class="srow"><span>Total Deductions</span><span class="val">USD &nbsp; $'+fmt(td)+'</span></div><div class="clear"></div>' +
@@ -358,7 +390,6 @@ function payslipPage(nm,id,dp,ds,pf,pt,pd,bk,ac,ba,al,bo,ot,cm,tx,ep,ins,ln,oh,g
 
     '</div>' +
 
-    // FOOTER
     '<div class="ft">This is a computer-generated payslip and does not require a signature.<br>' +
     '<b>Talent Nexus</b> &bull; ' + CO_WEBSITE + ' &bull; ' + HR_EMAIL + '<br>' +
     'UK: ' + CO_ADDRESS_UK + '<br>' +
@@ -367,9 +398,6 @@ function payslipPage(nm,id,dp,ds,pf,pt,pd,bk,ac,ba,al,bo,ot,cm,tx,ep,ins,ln,oh,g
     '</div>';
 }
 
-// ==========================================
-// EXPERIENCE LETTER TEMPLATE — Clean, Modern, Professional
-// ==========================================
 function generateExperienceHtml(d) {
   var empName = str(d.employeeName), position = str(d.position);
   var shift = str(d.shift), trainStart = str(d.trainingStart);
@@ -392,38 +420,30 @@ function generateExperienceHtml(d) {
   return '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' +
     '@page{size:A4;margin:14mm 15mm}' +
     'body{font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;color:#1a1a2e;font-size:10pt;line-height:1.7;margin:0}' +
-    // Header bar
     '.hdr{width:100%;background:#1a1a2e;padding:10px 16px}' +
     '.hdr-tbl{width:100%}.hdr-tbl td{padding:2px 8px}' +
     '.hdr-logo{width:30px;height:30px;background:#c9a84c;text-align:center;color:#fff;font-weight:900;font-size:13px}' +
     '.hdr-co{color:#fff;font-size:12pt;font-weight:700;letter-spacing:0.5px}' +
     '.hdr-tag{color:#c9a84c;font-size:6pt;text-transform:uppercase;letter-spacing:1.5px}' +
-    // Title
     '.title{text-align:center;font-size:13pt;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:14px 0 2px}' +
     '.line{width:50px;height:2px;background:#c9a84c;margin:0 auto 12px}' +
-    // Meta
     '.ref{font-size:7pt;color:#999;margin-bottom:8px}' +
     '.drow{text-align:right;font-size:8.5pt;margin-bottom:8px}' +
     '.to{font-size:8.5pt;font-weight:700;margin-bottom:10px}' +
-    // Body
     '.body-text{font-size:10pt;text-align:justify;margin-bottom:8px;line-height:1.9}' +
     '.body-text p{margin:0 0 14px;text-indent:0}' +
-    // Details table
     '.dtbl{width:100%;border-collapse:collapse;border:1px solid #ddd;margin:12px 0}' +
     '.dtbl td{padding:4px 10px;font-size:8pt;border:1px solid #eee}' +
     '.dtbl td.lbl{background:#f8f8f8;font-weight:600;color:#555;width:28%}' +
-    // Signature
     '.sig{margin-top:26px}' +
     '.sig-sign{font-family:"Segoe Script","Brush Script MT","Great Vibes",cursive;font-size:16pt;color:#1a1a2e;margin-bottom:4px}' +
     '.sig-line{border-top:1.5px solid #1a1a2e;width:170px;margin-bottom:3px}' +
     '.sig-name{font-weight:700;font-size:9.5pt}' +
     '.sig-role{font-size:7.5pt;color:#666}' +
     '.sig-hr{font-size:7.5pt;color:#c9a84c;font-weight:600;margin-top:1px}' +
-    // Footer
     '.ft{margin-top:20px;border-top:1px solid #ddd;padding-top:6px;text-align:center;font-size:6.5pt;color:#aaa}' +
     '</style></head><body>' +
 
-    // HEADER
     '<table class="hdr-tbl"><tr>' +
     '<td width="34"><table><tr><td class="hdr-logo">TN</td></tr></table></td>' +
     '<td><div class="hdr-co">TALENT NEXUS</div><div class="hdr-tag">Connecting Talent. Creating Impact.</div></td>' +
@@ -474,6 +494,47 @@ function logRequest(type, empName, empId, tgUsername, tgId) {
   } catch (e) {}
 }
 
+// ======== TOKEN SYSTEM ========
+function storeDocumentToken(docType, formData) {
+  var token = generateToken();
+  try {
+    var ss = SpreadsheetApp.openById(SHEET_ID);
+    var s = ss.getSheetByName("DocumentTokens");
+    if (!s) {
+      s = ss.insertSheet("DocumentTokens");
+      s.appendRow(["Token", "Type", "Payload", "CreatedAt"]);
+    }
+    var payload = JSON.stringify(formData);
+    s.appendRow([token, docType, payload, new Date()]);
+    cleanupOldTokens(s);
+  } catch (e) {}
+  return token;
+}
+
+function generateToken() {
+  var ts = new Date().getTime().toString(36);
+  var rand = Math.random().toString(36).substring(2, 7);
+  return "TK-" + ts + "-" + rand;
+}
+
+function cleanupOldTokens(sheet) {
+  try {
+    var data = sheet.getDataRange().getValues();
+    var cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 7);
+    var rowsToDelete = [];
+    for (var i = data.length - 1; i >= 1; i--) {
+      var rowDate = new Date(data[i][3]);
+      if (rowDate < cutoff) {
+        rowsToDelete.push(i + 1);
+      }
+    }
+    for (var j = 0; j < rowsToDelete.length; j++) {
+      sheet.deleteRow(rowsToDelete[j]);
+    }
+  } catch (e) {}
+}
+
 // ======== HELPERS ========
 function esc(s) { return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function str(v) { return String(v||"").trim(); }
@@ -481,40 +542,14 @@ function num(v) { var n=parseFloat(v); return isNaN(n)?0:n; }
 function isValidEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e).trim()); }
 function safeFilename(s) { return String(s||"document").replace(/[^a-zA-Z0-9_\- ]/g,"").replace(/\s+/g,"_").substring(0,80); }
 
-function htmlToPdf(htmlContent, filename) {
-  // Convert HTML to real PDF using Google Docs export
-  try {
-    // Strip HTML tags for clean text
-    var plainText = htmlContent.replace(/<style[^>]*>[\s\S]*?<\/style>/gi,"")
-      .replace(/<[^>]+>/g," ").replace(/&amp;/g,"&").replace(/&lt;/g,"<")
-      .replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&bull;/g,"•")
-      .replace(/\s+/g," ").trim();
-    // Create temp doc, insert text, export as PDF
-    var doc = DocumentApp.create("temp_pdf_" + new Date().getTime());
-    doc.getBody().setText(plainText);
-    doc.saveAndClose();
-    var pdfBlob = doc.getAs("application/pdf").setName(filename);
-    // Clean up temp doc
-    DriveApp.getFileById(doc.getId()).setTrashed(true);
-    return pdfBlob;
-  } catch (e) {
-    // Fallback: return HTML as blob (will open in browser)
-    return HtmlService.createHtmlOutput(htmlContent).getBlob()
-      .setName(filename.replace(".pdf",".html")).setContentType("text/html");
-  }
-}
-
 function parseDateFlex(s) {
-  // Supports DD/MM/YY, DD-MM-YYYY, YYYY-MM-DD, etc.
   if (!s) return null;
   s = String(s).trim().replace(/-/g,"/");
   var parts = s.split("/");
   if (parts.length < 2) return null;
   var a = parseInt(parts[0]), b = parseInt(parts[1]), c = parseInt(parts[2]||"0");
   if (isNaN(a) || isNaN(b)) return null;
-  // If first part > 31, it's YYYY/MM/DD
   if (a > 31) return new Date(a, b-1, c || 1);
-  // Otherwise DD/MM/YY or DD/MM/YYYY
   var yr = c;
   if (yr < 100) yr += 2000;
   return new Date(yr, b-1, a);
