@@ -1,4 +1,4 @@
-// CS Portal v3 — MINIMAL DEBUG VERSION
+// CS Portal — Payslip & Experience Letter Generator
 // Deploy as Web App (Execute as: Me, Who has access: Anyone)
 
 var SHEET_ID = "1n6fDjRCi17yp0KQ9lP29ARtqJVg0V_YgV_l9m4FjiCw";
@@ -8,38 +8,17 @@ var CO_WEBSITE = "www.talentnexus.com";
 var CO_ADDRESS_UK = "Suite 10 & 11, The Sanctuary, 23 Oak Hill Grove, Surbiton, Surrey KT6 6DU, United Kingdom";
 var CO_ADDRESS_TH = "The Offices at CentralWorld, 999/9 Rama I Road, 28th Floor, Pathum Wan, Bangkok 10330, Thailand";
 var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwtcjR_XMIyZFixa3RymCqIymRP6csBSuVoGGb8UyDo69iIJaQtjwHYqce7tn-S-gjZ/exec";
-var SESSION_HOURS = 8;
-
-// ==================== ENTRY POINTS ====================
 
 function doGet(e) {
   var p = e.parameter || {};
+  var token = str(p.token);
 
-  // Quick deployment test
-  if (p.test === "1") {
-    return ContentService.createTextOutput("DEPLOY OK - v4-minimal - " + new Date().toISOString());
+  // Token-based document retrieval (from email "Download" link)
+  if (token) {
+    return handleDocumentToken(token);
   }
 
-  var session = str(p.session);
-
-  if (session) {
-    var s = validateSession(session);
-    if (s) {
-      try {
-        return HtmlService.createHtmlOutput(getPortalPage(s))
-          .setTitle("Talent Nexus — Portal")
-          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-          .addMetaTag('viewport','width=device-width,initial-scale=1');
-      } catch(e) {
-        return ContentService.createTextOutput("PORTAL PAGE ERROR: " + e.toString());
-      }
-    }
-  }
-
-  return HtmlService.createHtmlOutput(getLoginPage(str(p.error)))
-    .setTitle("Talent Nexus — Sign In")
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-    .addMetaTag('viewport','width=device-width,initial-scale=1');
+  return ContentService.createTextOutput("CS Employee Portal API v3.0 — Operational");
 }
 
 function doPost(e) {
@@ -52,18 +31,7 @@ function doPost(e) {
     }
     var action = d.action || "";
 
-    if (action === "portal_login") {
-      return json(handlePortalLogin(d));
-    }
-
-    // All other actions require valid session
-    var session = validateSession(d.session);
-    if (!session) {
-      return json({ error: "Session expired." });
-    }
-
     if (action === "generate_payslip") {
-      d.employeeName = d.employeeName || session.name;
       var html = generatePayslipHtml(d);
       var startDt = parseDateFlex(str(d.payPeriodFrom));
       var periodName = startDt ? (monthName(startDt) + "_" + startDt.getFullYear()) : "Monthly";
@@ -73,264 +41,63 @@ function doPost(e) {
     }
 
     if (action === "generate_experience") {
-      d.employeeName = d.employeeName || session.name;
       var html2 = generateExperienceHtml(d);
       var filename2 = safeFilename(d.employeeName || "Employee") + "_Experience_Letter.pdf";
       sendEmailIfRequested(d, html2, filename2, "experience");
       return returnPdf(html2, filename2);
     }
 
-    return json({ error: "Unknown action" });
+    return json({ error: "Unknown action: " + action });
   } catch (err) {
     return json({ error: err.toString() });
   }
 }
 
-// ==================== LOGIN ====================
+// ==================== DOCUMENT TOKEN RETRIEVAL ====================
 
-function handlePortalLogin(d) {
-  var tgName = str(d.tgName);
-  var tgId = str(d.tgId);
-  var password = str(d.password);
-
-  if (!tgName || !tgId || !password) {
-    return { ok: false, error: "All fields are required." };
-  }
-
-  var ss = SpreadsheetApp.openById(SHEET_ID);
-  var userSheet = getOrCreateSheet(ss, "PortalUsers", ["Email","Password","Name","Role","TelegramName","TelegramID","CreatedAt","LastLogin"]);
-  userSheet.getRange("B:B").setNumberFormat('@STRING@');
-  userSheet.getRange("F:F").setNumberFormat('@STRING@');
-  migratePortalUsers(userSheet);
-  ensureDefaultUser(ss, userSheet);
-
-  var data = userSheet.getDataRange().getValues();
-  var foundRow = -1, foundName = "", foundEmail = "";
-  var tgNameLower = tgName.toLowerCase();
-  var tgIdClean = tgId.replace(/[^0-9]/g, "");
-
-  for (var i = 1; i < data.length; i++) {
-    var rowTgName = str(data[i][4]).toLowerCase();
-    var rowTgId = str(data[i][5]).replace(/[^0-9]/g, "");
-    if (rowTgName === tgNameLower || (tgIdClean && rowTgId === tgIdClean)) {
-      if (str(data[i][1]) === password) {
-        foundRow = i;
-        foundName = str(data[i][2]) || tgName;
-        foundEmail = str(data[i][0]);
+function handleDocumentToken(token) {
+  try {
+    var ss = SpreadsheetApp.openById(SHEET_ID);
+    var s = ss.getSheetByName("DocumentTokens");
+    if (!s) return pdfError("Token not found or expired.");
+    var data = s.getDataRange().getValues();
+    var found = null;
+    for (var i = 1; i < data.length; i++) {
+      if (str(data[i][0]) === token) {
+        found = { type: str(data[i][1]), payload: str(data[i][2]) };
         break;
       }
     }
-  }
-
-  if (foundRow >= 0) {
-    var oldTgName = str(data[foundRow][4]);
-    var oldTgId = str(data[foundRow][5]);
-    if (tgName !== oldTgName) { userSheet.getRange(foundRow + 1, 5).setValue(tgName); logChange(foundEmail, "TelegramName", oldTgName || "(empty)", tgName); }
-    if (tgId !== oldTgId) { userSheet.getRange(foundRow + 1, 6).setValue(tgId); logChange(foundEmail, "TelegramID", oldTgId || "(empty)", tgId); }
-    userSheet.getRange(foundRow + 1, 8).setValue(new Date());
-    var sessionToken = createSession(tgName, tgId, foundName);
-    logLogin(foundEmail, password, tgName, tgId, "success", foundName, "");
-    return { ok: true, token: sessionToken, name: foundName, tgName: tgName };
-  }
-
-  var userExists = false;
-  for (var j = 1; j < data.length; j++) {
-    if (str(data[j][4]).toLowerCase() === tgNameLower || (tgIdClean && str(data[j][5]).replace(/[^0-9]/g, "") === tgIdClean)) { userExists = true; break; }
-  }
-  var errMsg = userExists ? "Incorrect password." : "Account not found. Contact HR.";
-  logLogin("", password, tgName, tgId, "failed", errMsg, "");
-  return { ok: false, error: errMsg };
-}
-
-// ==================== SESSIONS ====================
-
-function createSession(tgName, tgId, name) {
-  var token = "SES-" + new Date().getTime().toString(36) + "-" + Math.random().toString(36).substring(2, 9);
-  try {
-    var ss = SpreadsheetApp.openById(SHEET_ID);
-    var s = getOrCreateSheet(ss, "PortalSessions", ["Token","TelegramName","TelegramID","Name","CreatedAt","ExpiresAt"]);
-    var expires = new Date(Date.now() + SESSION_HOURS * 3600000);
-    s.appendRow([token, tgName, tgId, name, new Date(), expires]);
-  } catch(e) {}
-  return token;
-}
-
-function validateSession(token) {
-  if (!token) return null;
-  try {
-    var ss = SpreadsheetApp.openById(SHEET_ID);
-    var s = ss.getSheetByName("PortalSessions");
-    if (!s || s.getLastRow() < 2) return null;
-    var data = s.getDataRange().getValues();
-    var now = new Date();
-    for (var i = 1; i < data.length; i++) {
-      if (str(data[i][0]) === token) {
-        if (new Date(data[i][5]) > now) {
-          return { name: str(data[i][3]), tgName: str(data[i][1]), token: token };
-        }
-      }
+    if (!found) return pdfError("Token not found or expired.");
+    if (found.type === "payslip") {
+      var d = JSON.parse(found.payload);
+      var html = generatePayslipHtml(d);
+      var startDt = parseDateFlex(str(d.payPeriodFrom));
+      var periodName = startDt ? (monthName(startDt) + "_" + startDt.getFullYear()) : "Monthly";
+      var filename = safeFilename(d.employeeName || "Employee") + "_" + periodName + "_Payslip.pdf";
+      return returnPdf(html, filename);
     }
-  } catch(e) {}
-  return null;
-}
-
-// ==================== LOGGING ====================
-
-function logLogin(email, password, tgName, tgId, status, detail, ip) {
-  try {
-    var ss = SpreadsheetApp.openById(SHEET_ID);
-    var s = getOrCreateSheet(ss, "LoginLog", ["Timestamp","Email","Password","Name","TelegramName","TelegramID","Status","Detail","IP"]);
-    s.getRange("C:C").setNumberFormat('@STRING@');
-    s.appendRow([new Date(), email, String(password||""), detail, tgName||"", tgId||"", status, detail, ip||""]);
-  } catch(e) {}
-}
-
-function logChange(email, field, oldVal, newVal) {
-  try {
-    var ss = SpreadsheetApp.openById(SHEET_ID);
-    var s = getOrCreateSheet(ss, "PortalChanges", ["Timestamp","Email","Field","OldValue","NewValue"]);
-    s.appendRow([new Date(), email, field, oldVal, newVal]);
-  } catch(e) {}
-}
-
-function migratePortalUsers(sheet) {
-  try {
-    var data = sheet.getDataRange().getValues();
-    if (data.length < 1) return;
-    if (data[0].length <= 6) {
-      sheet.insertColumns(5, 2);
-      sheet.getRange(1, 5).setValue("TelegramName");
-      sheet.getRange(1, 6).setValue("TelegramID");
-      sheet.getRange("F:F").setNumberFormat('@STRING@');
+    if (found.type === "experience") {
+      var d2 = JSON.parse(found.payload);
+      var html2 = generateExperienceHtml(d2);
+      var filename2 = safeFilename(d2.employeeName || "Employee") + "_Experience_Letter.pdf";
+      return returnPdf(html2, filename2);
     }
-  } catch(e) {}
-}
-
-function ensureDefaultUser(ss, sheet) {
-  var data = sheet.getDataRange().getValues();
-  if (data.length <= 1) {
-    sheet.appendRow(["admin@talentnexus.com", "admin123", "HR Admin", "admin", "@HR_Admin", "000000000", new Date(), ""]);
-    sheet.getRange("B:B").setNumberFormat('@STRING@');
-    sheet.getRange("F:F").setNumberFormat('@STRING@');
+    return pdfError("Unknown document type.");
+  } catch (err) {
+    return pdfError(err.toString());
   }
 }
 
-// ==================== LOGIN PAGE (minimal) ====================
-
-function getLoginPage(errorMsg) {
-  var errDisplay = errorMsg ? "block" : "none";
-  var errText = errorMsg ? esc(errorMsg) : "";
-
-  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Talent Nexus</title>';
-  html += '<style>';
-  html += 'body{font-family:Arial,sans-serif;background:#08080c;color:#e8e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}';
-  html += '.box{background:#111118;border:1px solid #2a2a3c;border-radius:12px;padding:30px;width:340px;text-align:center}';
-  html += 'h2{color:#c9a84c;margin:0 0 6px;font-size:18px}.ver{color:#62627a;font-size:10px;margin-bottom:20px}';
-  html += 'input{width:100%;padding:10px;margin-bottom:10px;background:#1a1a2e;border:1px solid #2a2a3c;border-radius:6px;color:#e8e8f0;font-size:13px;box-sizing:border-box;outline:none}';
-  html += 'input:focus{border-color:#c9a84c}';
-  html += 'button{width:100%;padding:11px;background:#c9a84c;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer}';
-  html += 'button:hover{background:#d4b85e}button:disabled{opacity:.5}';
-  html += '#err{display:' + errDisplay + ';color:#f87171;font-size:12px;margin-top:10px}';
-  html += '</style></head><body>';
-  html += '<div class="box">';
-  html += '<h2>Talent Nexus</h2><div class="ver">Employee Portal v4.1</div>';
-  html += '<input type="text" id="tgName" placeholder="Telegram Name (e.g. @username)" autofocus>';
-  html += '<input type="text" id="tgId" placeholder="Telegram ID">';
-  html += '<input type="password" id="pw" placeholder="Password">';
-  html += '<button id="btn" onclick="doLogin()">Sign In</button>';
-  html += '<div id="err">' + errText + '</div>';
-  html += '</div>';
-  html += '<script>';
-  html += 'document.getElementById("pw").addEventListener("keydown",function(e){if(e.key==="Enter")doLogin()});';
-  html += 'function doLogin(){';
-  html += 'var n=document.getElementById("tgName").value.trim();';
-  html += 'var i=document.getElementById("tgId").value.trim();';
-  html += 'var p=document.getElementById("pw").value;';
-  html += 'var errEl=document.getElementById("err");';
-  html += 'var btn=document.getElementById("btn");';
-  html += 'errEl.style.display="none";';
-  html += 'if(!n||!i||!p){errEl.textContent="All fields are required.";errEl.style.display="block";return}';
-  html += 'btn.textContent="Signing in...";btn.disabled=true;';
-  html += 'google.script.run';
-  html += '.withSuccessHandler(function(r){';
-  html += 'if(r.ok){window.location.href=window.location.href.split("?")[0]+"?session="+encodeURIComponent(r.token)}';
-  html += 'else{errEl.textContent=r.error;errEl.style.display="block";btn.textContent="Sign In";btn.disabled=false}';
-  html += '})';
-  html += '.withFailureHandler(function(e){errEl.textContent="Connection error. Please try again.";errEl.style.display="block";btn.textContent="Sign In";btn.disabled=false})';
-  html += '.handlePortalLogin({tgName:n,tgId:i,password:p});';
-  html += '}';
-  html += '</script></body></html>';
-  return html;
-}
-
-// ==================== PORTAL PAGE (minimal) ====================
-
-function getPortalPage(session) {
-  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Talent Nexus</title>';
-  html += '<style>';
-  html += 'body{font-family:Arial,sans-serif;background:#08080c;color:#e8e8f0;padding:20px;margin:0}';
-  html += '.bar{background:#0d0d14;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #1f1f2e;margin:-20px -20px 20px}';
-  html += '.bar span{font-weight:700;color:#c9a84c}.bar button{background:transparent;border:1px solid #2a2a3c;color:#9a9ab2;padding:5px 12px;border-radius:4px;cursor:pointer;font-size:11px}';
-  html += '.bar button:hover{color:#fff;border-color:#c9a84c}';
-  html += '.tabs{display:flex;gap:4px;margin-bottom:16px}';
-  html += '.tab{padding:8px 16px;background:#111118;border:1px solid #1f1f2e;color:#9a9ab2;cursor:pointer;border-radius:6px;font-size:12px}';
-  html += '.tab.on{background:#1a1a2e;color:#c9a84c;border-color:#c9a84c}';
-  html += '.card{background:#111118;border:1px solid #1f1f2e;border-radius:8px;padding:16px;margin-bottom:12px}';
-  html += '.card h3{font-size:11px;color:#9a9ab2;margin:0 0 12px;text-transform:uppercase;letter-spacing:.5px}';
-  html += '.row{display:flex;gap:10px;margin-bottom:8px}.row>div{flex:1}';
-  html += 'label{display:block;font-size:9px;color:#62627a;margin-bottom:3px;text-transform:uppercase}';
-  html += 'input,select,textarea{width:100%;padding:8px;background:#0d0d14;border:1px solid #1f1f2e;border-radius:4px;color:#e8e8f0;font-size:11px;box-sizing:border-box;outline:none}';
-  html += 'input:focus,select:focus{border-color:#c9a84c}';
-  html += '.btn{padding:10px;background:#c9a84c;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;width:100%}';
-  html += '.btn:hover{background:#d4b85e}.btn:disabled{opacity:.5}';
-  html += '.sum{display:flex;justify-content:space-between;padding:4px 0;font-size:11px}';
-  html += '.sum.net{font-weight:700;color:#c9a84c;font-size:13px;border-top:1px solid #1f1f2e;margin-top:4px;padding-top:6px}';
-  html += '@media(max-width:500px){.row{flex-direction:column}}';
-  html += '</style></head><body>';
-  html += '<div class="bar"><span>' + esc(session.tgName || session.name) + '</span><button onclick="doLogout()">Sign Out</button></div>';
-  html += '<div class="tabs"><button class="tab on" id="tab-ps" onclick="switchTab(\'ps\')">Payslip</button><button class="tab" id="tab-ex" onclick="switchTab(\'ex\')">Experience Letter</button></div>';
-
-  // Payslip panel
-  html += '<div id="panel-ps"><div class="card"><h3>Generate Payslip</h3>';
-  html += '<div class="row"><div><label>Employee Name *</label><input type="text" id="psName" value="' + esc(session.name) + '"></div><div><label>Employee ID *</label><input type="text" id="psId"></div></div>';
-  html += '<div class="row"><div><label>Department</label><input type="text" id="psDept"></div><div><label>Designation</label><input type="text" id="psDesig"></div></div>';
-  html += '<div class="row"><div><label>Pay Period From</label><input type="text" id="psFrom"></div><div><label>Pay Period To</label><input type="text" id="psTo"></div><div><label>Payment Date</label><input type="text" id="psPayDate"></div></div>';
-  html += '<div class="row"><div><label>Basic Salary</label><input type="number" id="psBasic" step="0.01" oninput="calc()"></div><div><label>Allowance</label><input type="number" id="psAllow" step="0.01" oninput="calc()"></div><div><label>Bonus</label><input type="number" id="psBonus" step="0.01" oninput="calc()"></div></div>';
-  html += '<div class="row"><div><label>Overtime</label><input type="number" id="psOT" step="0.01" oninput="calc()"></div><div><label>Commission</label><input type="number" id="psComm" step="0.01" oninput="calc()"></div></div>';
-  html += '<div class="row"><div><label>Tax</label><input type="number" id="psTax" step="0.01" oninput="calc()"></div><div><label>EPF/ETF</label><input type="number" id="psEpf" step="0.01" oninput="calc()"></div><div><label>Insurance</label><input type="number" id="psIns" step="0.01" oninput="calc()"></div></div>';
-  html += '<div class="row"><div><label>Loan</label><input type="number" id="psLoan" step="0.01" oninput="calc()"></div><div><label>Other Ded.</label><input type="number" id="psOther" step="0.01" oninput="calc()"></div></div>';
-  html += '<div class="row"><div><label>Bank</label><input type="text" id="psBank"></div><div><label>Account #</label><input type="text" id="psAcct"></div><div><label>Email (optional)</label><input type="email" id="psEmail"></div></div>';
-  html += '<div class="sum"><span>Gross</span><span id="gross">$0.00</span></div>';
-  html += '<div class="sum"><span>Deductions</span><span id="ded">$0.00</span></div>';
-  html += '<div class="sum net"><span>NET PAY</span><span id="net">$0.00</span></div>';
-  html += '<button class="btn" id="psBtn" onclick="genPs()" style="margin-top:10px">Generate Payslip</button>';
-  html += '<div id="psMsg" style="font-size:10px;text-align:center;margin-top:8px"></div>';
-  html += '</div></div>';
-
-  // Experience panel
-  html += '<div id="panel-ex" style="display:none"><div class="card"><h3>Generate Experience Letter</h3>';
-  html += '<div class="row"><div><label>Employee Name *</label><input type="text" id="exName" value="' + esc(session.name) + '"></div><div><label>Position *</label><input type="text" id="exPos"></div></div>';
-  html += '<div class="row"><div><label>Shift / Team</label><input type="text" id="exShift"></div><div><label>Certificate Date</label><input type="text" id="exDate"></div></div>';
-  html += '<div class="row"><div><label>Training Start</label><input type="text" id="exTrain"></div><div><label>Working Start</label><input type="text" id="exOfficial"></div></div>';
-  html += '<div class="row"><div><label>Address</label><input type="text" id="exAddr"></div><div><label>Email (optional)</label><input type="email" id="exEmail"></div></div>';
-  html += '<label>Custom Letter Text (optional)</label><textarea id="exBody" rows="3" style="width:100%;margin-bottom:8px"></textarea>';
-  html += '<button class="btn" id="exBtn" onclick="genEx()">Generate Experience Letter</button>';
-  html += '<div id="exMsg" style="font-size:10px;text-align:center;margin-top:8px"></div>';
-  html += '</div></div>';
-
-  // JavaScript
-  html += '<script>var TOKEN="' + session.token + '";';
-  html += 'function switchTab(t){document.getElementById("panel-ps").style.display=t==="ps"?"block":"none";document.getElementById("panel-ex").style.display=t==="ex"?"block":"none";document.getElementById("tab-ps").className="tab"+(t==="ps"?" on":"");document.getElementById("tab-ex").className="tab"+(t==="ex"?" on":"")}';
-  html += 'function v(id){return document.getElementById(id).value.trim()}';
-  html += 'function n(id){var x=parseFloat(document.getElementById(id).value);return isNaN(x)?0:x}';
-  html += 'function f(x){return x.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}';
-  html += 'function calc(){var g=n("psBasic")+n("psAllow")+n("psBonus")+n("psOT")+n("psComm");var d=n("psTax")+n("psEpf")+n("psIns")+n("psLoan")+n("psOther");document.getElementById("gross").textContent="$"+f(g);document.getElementById("ded").textContent="$"+f(d);document.getElementById("net").textContent="$"+f(g-d)}';
-  html += 'function postForm(action,data,btnId,msgId){var b=document.getElementById(btnId);var m=document.getElementById(msgId);m.textContent="";b.disabled=true;b.textContent="Generating...";var form=document.createElement("form");form.method="POST";form.action="";form.target="_blank";data.action=action;data.session=TOKEN;for(var k in data){var inp=document.createElement("input");inp.name=k;inp.value=data[k];form.appendChild(inp)}document.body.appendChild(form);form.submit();document.body.removeChild(form);setTimeout(function(){b.disabled=false;b.textContent=action==="generate_payslip"?"Generate Payslip":"Generate Experience Letter";m.textContent="Opening in new tab...";m.style.color="#10b981"},1500)}';
-  html += 'function genPs(){var d={employeeName:v("psName"),employeeId:v("psId"),department:v("psDept"),designation:v("psDesig"),payPeriodFrom:v("psFrom"),payPeriodTo:v("psTo"),paymentDate:v("psPayDate"),bankName:v("psBank"),accountNumber:v("psAcct"),basicSalary:v("psBasic"),allowance:v("psAllow"),attendanceBonus:v("psBonus"),overtime:v("psOT"),commission:v("psComm"),tax:v("psTax"),epfEtf:v("psEpf"),insurance:v("psIns"),loanDeduction:v("psLoan"),otherDeduction:v("psOther"),emailTo:v("psEmail"),months:"1"};if(!d.employeeName||!d.employeeId){var m=document.getElementById("psMsg");m.textContent="Name and ID required.";m.style.color="#ef4444";return}postForm("generate_payslip",d,"psBtn","psMsg")}';
-  html += 'function genEx(){var d={employeeName:v("exName"),position:v("exPos"),shift:v("exShift"),trainingStart:v("exTrain"),officialDate:v("exOfficial"),address:v("exAddr"),certDate:v("exDate"),bodyText:v("exBody"),emailTo:v("exEmail")};if(!d.employeeName||!d.position){var m=document.getElementById("exMsg");m.textContent="Name and Position required.";m.style.color="#ef4444";return}postForm("generate_experience",d,"exBtn","exMsg")}';
-  html += 'function doLogout(){location.href=location.href.split("?")[0]}';
-  html += '</script></body></html>';
-  return html;
+function pdfError(msg) {
+  return HtmlService.createHtmlOutput(
+    '<!DOCTYPE html><html><body style="font-family:Arial;padding:40px;text-align:center">' +
+    '<h3 style="color:#c0392b">Document Unavailable</h3>' +
+    '<p style="color:#666">' + esc(msg) + '</p>' +
+    '<p style="color:#999;font-size:12px">Tokens expire after 7 days.</p>' +
+    '<a href="https://bit.ly/TNPortal" style="color:#c9a84c">Go to Talent Nexus Portal</a>' +
+    '</body></html>'
+  ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 // ==================== PAYSLIP GENERATION ====================
@@ -361,7 +128,7 @@ function generatePayslipHtml(d) {
     if (payDate && months > 1) { var p = new Date(payDate); p.setMonth(p.getMonth() + m); curPay = fmtDate(p); }
     pagesHtml += payslipPage(empName, empId, dept, desig, curFrom, curTo, curPay, bank, acct, basic, allow, bonus, ot, comm, tax, epf, ins, loan, other, gross, totalDed, net, mlbl);
   }
-  logRequest("payslip", empName, empId);
+  logRequest("payslip", empName, empId, str(d.processedBy));
   return payslipShell(pagesHtml);
 }
 
@@ -425,10 +192,10 @@ function generateExperienceHtml(d) {
   var bodyText = str(d.bodyText);
   var firstName = esc(empName.split(" ")[0]);
   if (!empName || !position) return "<h3>Error: Employee Name and Position are required.</h3>";
-  var defaultBody = '<p>This is to certify that <b>' + esc(empName) + '</b> was employed with <b>Talent Nexus</b>. During their tenure as <b>' + esc(position) + '</b>, they demonstrated outstanding professionalism and commitment.</p>' +
-    '<p>We confirm ' + firstName + ' has satisfactorily discharged all duties. We recommend ' + firstName + ' for any future position and wish them continued success.</p>';
+  var defaultBody = '<p>This is to certify that <b>' + esc(empName) + '</b> was employed with <b>Talent Nexus</b>. During their tenure as <b>' + esc(position) + '</b>, they demonstrated outstanding professionalism and commitment to excellence.</p>' +
+    '<p>We confirm that ' + firstName + ' has satisfactorily discharged all duties and responsibilities. We recommend ' + firstName + ' for any future position and wish them continued success.</p>';
   var refNo = "TN/HR/EXP/" + new Date().getFullYear() + "/" + Math.floor(Math.random()*9000+1000);
-  logRequest("experience", empName, "");
+  logRequest("experience", empName, "", str(d.processedBy));
   return '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' +
     '@page{size:A4;margin:14mm 15mm}body{font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;color:#1a1a2e;font-size:10pt;line-height:1.7;margin:0}' +
     '.hdr{width:100%;background:#1a1a2e;padding:10px 16px}.hdr-tbl{width:100%}.hdr-tbl td{padding:2px 8px}' +
@@ -473,9 +240,7 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
   var token = storeDocumentToken(docType, d);
   var docLink = APPS_SCRIPT_URL + "?token=" + encodeURIComponent(token);
   var docLabel = docType === "payslip" ? "Payslip" : "Experience Certificate";
-  var docMsg = docType === "payslip"
-    ? "Your payslip is ready. Click Download to view, print, or save."
-    : "Your experience certificate is ready. Click Download to view, print, or save.";
+  var docMsg = "Your " + docLabel.toLowerCase() + " is ready. Click Download to view, print, or save.";
 
   try {
     var htmlBody = '<div style="font-family:Arial,sans-serif;max-width:540px;margin:0 auto;border:1px solid #e2e2e2;border-radius:8px;background:#fff">' +
@@ -485,8 +250,8 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
       '<a href="' + docLink + '" style="display:inline-block;background:#c9a84c;color:#fff;padding:10px 24px;border-radius:6px;text-decoration:none;font-weight:700;font-size:13px">Download ' + docLabel + '</a>' +
       '<p style="font-size:11px;color:#999;margin-top:16px">For inquiries contact <a href="mailto:' + HR_EMAIL + '">' + HR_EMAIL + '</a></p></div>' +
       '<div style="background:#fafafa;padding:18px 28px;text-align:center;border-top:1px solid #eee">' +
-      '<p style="font-size:12px;color:#555;margin:0"><b>With Regards,</b></p><p style="font-size:13px;color:#1a1a2e;margin:0">' + HR_NAME + '</p>' +
-      '<p style="font-size:10px;color:#999;margin:0">Human Resources &bull; Talent Nexus</p></div></div>';
+      '<p style="font-size:12px;color:#555"><b>With Regards,</b></p><p style="font-size:13px;color:#1a1a2e">' + HR_NAME + '</p>' +
+      '<p style="font-size:10px;color:#999">Human Resources &bull; Talent Nexus</p></div></div>';
 
     MailApp.sendEmail({
       to: emailTo.trim(),
@@ -500,7 +265,7 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
     try {
       var ss = SpreadsheetApp.openById(SHEET_ID);
       var s = ss.getSheetByName("RequestLog");
-      if (s) s.appendRow([new Date(), "email_sent", empName, emailTo.trim()]);
+      if (s) s.appendRow([new Date(), "email_sent", empName, emailTo.trim(), str(d.processedBy)]);
     } catch(e2) {}
   } catch(e) {}
 }
@@ -514,8 +279,21 @@ function storeDocumentToken(docType, formData) {
     var s = ss.getSheetByName("DocumentTokens");
     if (!s) { s = ss.insertSheet("DocumentTokens"); s.appendRow(["Token","Type","Payload","CreatedAt"]); }
     s.appendRow([token, docType, JSON.stringify(formData), new Date()]);
+    cleanupOldTokens(s);
   } catch(e) {}
   return token;
+}
+
+function cleanupOldTokens(sheet) {
+  try {
+    var data = sheet.getDataRange().getValues();
+    var cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 7);
+    var rowsToDelete = [];
+    for (var i = data.length - 1; i >= 1; i--) {
+      if (new Date(data[i][3]) < cutoff) rowsToDelete.push(i + 1);
+    }
+    for (var j = 0; j < rowsToDelete.length; j++) { sheet.deleteRow(rowsToDelete[j]); }
+  } catch(e) {}
 }
 
 // ==================== PDF RETURN ====================
@@ -539,8 +317,7 @@ function returnPdf(html, filename) {
       '<button class="sec" onclick="downloadFile()">Download</button>' +
       '<button onclick="window.print()">Save as PDF</button></div></div>' +
       '<div class="preview">' + html + '</div>' +
-      '<script>function downloadFile(){var b=new Blob([document.documentElement.outerHTML],{type:"text/html"});var a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="' + esc(cleanTitle) + '.html";a.click()}' +
-      'setTimeout(function(){window.print()},800)</script></body></html>'
+      '<script>function downloadFile(){var b=new Blob([document.documentElement.outerHTML],{type:"text/html"});var a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="' + esc(cleanTitle) + '.html";a.click()}setTimeout(function(){window.print()},800)</script></body></html>'
     ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   } catch(e) {
     return HtmlService.createHtmlOutput('<p>Error: ' + esc(e.toString()) + '</p>');
@@ -556,18 +333,12 @@ function isValidEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e).tr
 function safeFilename(s) { return String(s||"document").replace(/[^a-zA-Z0-9_\- ]/g,"").replace(/\s+/g,"_").substring(0,80); }
 function json(obj) { return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON); }
 
-function getOrCreateSheet(ss, name, headers) {
-  var s = ss.getSheetByName(name);
-  if (!s) { s = ss.insertSheet(name); if (headers) s.appendRow(headers); }
-  return s;
-}
-
-function logRequest(type, empName, empId) {
+function logRequest(type, empName, empId, processedBy) {
   try {
     var ss = SpreadsheetApp.openById(SHEET_ID);
     var s = ss.getSheetByName("RequestLog");
-    if (!s) { s = ss.insertSheet("RequestLog"); s.appendRow(["Timestamp","Type","EmployeeName","EmployeeID"]); }
-    s.appendRow([new Date(), type, empName, empId]);
+    if (!s) { s = ss.insertSheet("RequestLog"); s.appendRow(["Timestamp","Type","EmployeeName","EmployeeID","ProcessedBy"]); }
+    s.appendRow([new Date(), type, empName, empId, processedBy || ""]);
   } catch(e) {}
 }
 
