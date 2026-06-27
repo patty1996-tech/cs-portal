@@ -36,9 +36,8 @@ function doGet(e) {
     }
   }
 
-  // Temporarily return ultra-simple HTML to test rendering
-  return HtmlService.createHtmlOutput('<!DOCTYPE html><html><head><title>Test</title></head><body style="background:#08080c;color:#fff;font-family:Arial;display:flex;align-items:center;justify-content:center;height:100vh"><div style="text-align:center"><h1 style="color:#c9a84c">Talent Nexus</h1><p>Login test - if you see this, HTML rendering works</p></div></body></html>')
-    .setTitle("Test")
+  return HtmlService.createHtmlOutput(getLoginPage(str(p.error)))
+    .setTitle("Talent Nexus — Sign In")
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .addMetaTag('viewport','width=device-width,initial-scale=1');
 }
@@ -219,110 +218,119 @@ function ensureDefaultUser(ss, sheet) {
 // ==================== LOGIN PAGE (minimal) ====================
 
 function getLoginPage(errorMsg) {
-  var errHtml = errorMsg ? '<div id="err" style="color:#f87171;text-align:center;margin-top:12px;font-size:13px">' + esc(errorMsg) + '</div>' : '<div id="err" style="display:none"></div>';
+  var errDisplay = errorMsg ? "block" : "none";
+  var errText = errorMsg ? esc(errorMsg) : "";
 
-  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Talent Nexus — Sign In</title>'
-+ '<style>body{font-family:Arial,sans-serif;background:#08080c;color:#e8e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}'
-+ '.box{background:#111118;border:1px solid #2a2a3c;border-radius:12px;padding:30px;width:340px;text-align:center}'
-+ 'h2{color:#c9a84c;margin:0 0 6px;font-size:18px}.sub{color:#62627a;font-size:10px;margin-bottom:20px}'
-+ 'input{width:100%;padding:10px;margin-bottom:10px;background:#1a1a2e;border:1px solid #2a2a3c;border-radius:6px;color:#e8e8f0;font-size:13px;box-sizing:border-box;outline:none}'
-+ 'input:focus{border-color:#c9a84c}'
-+ 'button{width:100%;padding:11px;background:#c9a84c;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer}'
-+ 'button:hover{background:#d4b85e}button:disabled{opacity:.5}'
-+ '</style></head><body><div class="box">'
-+ '<h2>Talent Nexus</h2><div class="sub">Employee Portal &bull; v4-minimal</div>'
-+ '<input type="text" id="tgName" placeholder="Telegram Name (e.g. @username)" autofocus>'
-+ '<input type="text" id="tgId" placeholder="Telegram ID">'
-+ '<input type="password" id="pw" placeholder="Password">'
-+ '<button id="btn" onclick="doLogin()">Sign In</button>'
-+ errHtml
-+ '</div>'
-+ '<script>'
-+ 'document.getElementById("pw").addEventListener("keydown",function(e){if(e.key==="Enter")doLogin()});'
-+ 'function doLogin(){'
-+ 'var n=document.getElementById("tgName").value.trim();'
-+ 'var i=document.getElementById("tgId").value.trim();'
-+ 'var p=document.getElementById("pw").value;'
-+ 'var e=document.getElementById("err");'
-+ 'var b=document.getElementById("btn");'
-+ 'e.style.display="none";'
-+ 'if(!n||!i||!p){e.textContent="All fields required.";e.style.display="block";return}'
-+ 'b.textContent="Signing in...";b.disabled=true;'
-+ 'google.script.run'
-+ '  .withSuccessHandler(function(r){'
-+ '    if(r.ok){window.location.href=window.location.href.split("?")[0]+"?session="+encodeURIComponent(r.token)}'
-+ '    else{e.textContent=r.error;e.style.display="block";b.textContent="Sign In";b.disabled=false}'
-+ '  })'
-+ '  .withFailureHandler(function(err){e.textContent="Error: "+err.message;e.style.display="block";b.textContent="Sign In";b.disabled=false})'
-+ '  .handlePortalLogin({tgName:n,tgId:i,password:p});'
-+ '}'
-+ '</script></body></html>';
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Talent Nexus</title>';
+  html += '<style>';
+  html += 'body{font-family:Arial,sans-serif;background:#08080c;color:#e8e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}';
+  html += '.box{background:#111118;border:1px solid #2a2a3c;border-radius:12px;padding:30px;width:340px;text-align:center}';
+  html += 'h2{color:#c9a84c;margin:0 0 6px;font-size:18px}.ver{color:#62627a;font-size:10px;margin-bottom:20px}';
+  html += 'input{width:100%;padding:10px;margin-bottom:10px;background:#1a1a2e;border:1px solid #2a2a3c;border-radius:6px;color:#e8e8f0;font-size:13px;box-sizing:border-box;outline:none}';
+  html += 'input:focus{border-color:#c9a84c}';
+  html += 'button{width:100%;padding:11px;background:#c9a84c;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer}';
+  html += 'button:hover{background:#d4b85e}button:disabled{opacity:.5}';
+  html += '#err{display:' + errDisplay + ';color:#f87171;font-size:12px;margin-top:10px}';
+  html += '</style></head><body>';
+  html += '<div class="box">';
+  html += '<h2>Talent Nexus</h2><div class="ver">Employee Portal v4.1</div>';
+  html += '<input type="text" id="tgName" placeholder="Telegram Name (e.g. @username)" autofocus>';
+  html += '<input type="text" id="tgId" placeholder="Telegram ID">';
+  html += '<input type="password" id="pw" placeholder="Password">';
+  html += '<button id="btn" onclick="doLogin()">Sign In</button>';
+  html += '<div id="err">' + errText + '</div>';
+  html += '</div>';
+  html += '<script>';
+  html += 'document.getElementById("pw").addEventListener("keydown",function(e){if(e.key==="Enter")doLogin()});';
+  html += 'function doLogin(){';
+  html += 'var n=document.getElementById("tgName").value.trim();';
+  html += 'var i=document.getElementById("tgId").value.trim();';
+  html += 'var p=document.getElementById("pw").value;';
+  html += 'var errEl=document.getElementById("err");';
+  html += 'var btn=document.getElementById("btn");';
+  html += 'errEl.style.display="none";';
+  html += 'if(!n||!i||!p){errEl.textContent="All fields are required.";errEl.style.display="block";return}';
+  html += 'btn.textContent="Signing in...";btn.disabled=true;';
+  html += 'google.script.run';
+  html += '.withSuccessHandler(function(r){';
+  html += 'if(r.ok){window.location.href=window.location.href.split("?")[0]+"?session="+encodeURIComponent(r.token)}';
+  html += 'else{errEl.textContent=r.error;errEl.style.display="block";btn.textContent="Sign In";btn.disabled=false}';
+  html += '})';
+  html += '.withFailureHandler(function(e){errEl.textContent="Connection error. Please try again.";errEl.style.display="block";btn.textContent="Sign In";btn.disabled=false})';
+  html += '.handlePortalLogin({tgName:n,tgId:i,password:p});';
+  html += '}';
+  html += '</script></body></html>';
+  return html;
 }
 
 // ==================== PORTAL PAGE (minimal) ====================
 
 function getPortalPage(session) {
-  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Talent Nexus — Portal</title>'
-+ '<style>body{font-family:Arial,sans-serif;background:#08080c;color:#e8e8f0;padding:20px;margin:0}'
-+ '.bar{background:#0d0d14;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #1f1f2e;margin:-20px -20px 20px}'
-+ '.bar span{font-weight:700;color:#c9a84c}.bar button{background:transparent;border:1px solid #2a2a3c;color:#9a9ab2;padding:5px 12px;border-radius:4px;cursor:pointer;font-size:11px}'
-+ '.bar button:hover{color:#fff;border-color:#c9a84c}'
-+ '.tabs{display:flex;gap:4px;margin-bottom:16px}'
-+ '.tab{padding:8px 16px;background:#111118;border:1px solid #1f1f2e;color:#9a9ab2;cursor:pointer;border-radius:6px;font-size:12px}'
-+ '.tab.on{background:#1a1a2e;color:#c9a84c;border-color:#c9a84c}'
-+ '.card{background:#111118;border:1px solid #1f1f2e;border-radius:8px;padding:16px;margin-bottom:12px}'
-+ '.card h3{font-size:11px;color:#9a9ab2;margin:0 0 12px;text-transform:uppercase;letter-spacing:.5px}'
-+ '.row{display:flex;gap:10px;margin-bottom:8px}.row>div{flex:1}'
-+ 'label{display:block;font-size:9px;color:#62627a;margin-bottom:3px;text-transform:uppercase}'
-+ 'input,select,textarea{width:100%;padding:8px;background:#0d0d14;border:1px solid #1f1f2e;border-radius:4px;color:#e8e8f0;font-size:11px;box-sizing:border-box;outline:none}'
-+ 'input:focus,select:focus{border-color:#c9a84c}'
-+ '.btn{padding:10px;background:#c9a84c;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;width:100%}'
-+ '.btn:hover{background:#d4b85e}.btn:disabled{opacity:.5}'
-+ '.sum{display:flex;justify-content:space-between;padding:4px 0;font-size:11px}'
-+ '.sum.net{font-weight:700;color:#c9a84c;font-size:13px;border-top:1px solid #1f1f2e;margin-top:4px;padding-top:6px}'
-+ '@media(max-width:500px){.row{flex-direction:column}}'
-+ '</style></head><body>'
-+ '<div class="bar"><span>' + esc(session.tgName || session.name) + '</span><button onclick="location.href=location.href.split(\'?\')[0]">Sign Out</button></div>'
-+ '<div class="tabs"><button class="tab on" id="tab-ps" onclick="switchTab(\'ps\')">Payslip</button><button class="tab" id="tab-ex" onclick="switchTab(\'ex\')">Experience Letter</button></div>'
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Talent Nexus</title>';
+  html += '<style>';
+  html += 'body{font-family:Arial,sans-serif;background:#08080c;color:#e8e8f0;padding:20px;margin:0}';
+  html += '.bar{background:#0d0d14;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #1f1f2e;margin:-20px -20px 20px}';
+  html += '.bar span{font-weight:700;color:#c9a84c}.bar button{background:transparent;border:1px solid #2a2a3c;color:#9a9ab2;padding:5px 12px;border-radius:4px;cursor:pointer;font-size:11px}';
+  html += '.bar button:hover{color:#fff;border-color:#c9a84c}';
+  html += '.tabs{display:flex;gap:4px;margin-bottom:16px}';
+  html += '.tab{padding:8px 16px;background:#111118;border:1px solid #1f1f2e;color:#9a9ab2;cursor:pointer;border-radius:6px;font-size:12px}';
+  html += '.tab.on{background:#1a1a2e;color:#c9a84c;border-color:#c9a84c}';
+  html += '.card{background:#111118;border:1px solid #1f1f2e;border-radius:8px;padding:16px;margin-bottom:12px}';
+  html += '.card h3{font-size:11px;color:#9a9ab2;margin:0 0 12px;text-transform:uppercase;letter-spacing:.5px}';
+  html += '.row{display:flex;gap:10px;margin-bottom:8px}.row>div{flex:1}';
+  html += 'label{display:block;font-size:9px;color:#62627a;margin-bottom:3px;text-transform:uppercase}';
+  html += 'input,select,textarea{width:100%;padding:8px;background:#0d0d14;border:1px solid #1f1f2e;border-radius:4px;color:#e8e8f0;font-size:11px;box-sizing:border-box;outline:none}';
+  html += 'input:focus,select:focus{border-color:#c9a84c}';
+  html += '.btn{padding:10px;background:#c9a84c;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;width:100%}';
+  html += '.btn:hover{background:#d4b85e}.btn:disabled{opacity:.5}';
+  html += '.sum{display:flex;justify-content:space-between;padding:4px 0;font-size:11px}';
+  html += '.sum.net{font-weight:700;color:#c9a84c;font-size:13px;border-top:1px solid #1f1f2e;margin-top:4px;padding-top:6px}';
+  html += '@media(max-width:500px){.row{flex-direction:column}}';
+  html += '</style></head><body>';
+  html += '<div class="bar"><span>' + esc(session.tgName || session.name) + '</span><button onclick="doLogout()">Sign Out</button></div>';
+  html += '<div class="tabs"><button class="tab on" id="tab-ps" onclick="switchTab(\'ps\')">Payslip</button><button class="tab" id="tab-ex" onclick="switchTab(\'ex\')">Experience Letter</button></div>';
 
-// Payslip panel
-+ '<div id="panel-ps"><div class="card"><h3>Generate Payslip</h3>'
-+ '<div class="row"><div><label>Employee Name *</label><input type="text" id="psName" value="' + esc(session.name) + '"></div><div><label>Employee ID *</label><input type="text" id="psId"></div></div>'
-+ '<div class="row"><div><label>Department</label><input type="text" id="psDept"></div><div><label>Designation</label><input type="text" id="psDesig"></div></div>'
-+ '<div class="row"><div><label>Pay Period From</label><input type="text" id="psFrom"></div><div><label>Pay Period To</label><input type="text" id="psTo"></div><div><label>Payment Date</label><input type="text" id="psPayDate"></div></div>'
-+ '<div class="row"><div><label>Basic Salary</label><input type="number" id="psBasic" step="0.01" oninput="calc()"></div><div><label>Allowance</label><input type="number" id="psAllow" step="0.01" oninput="calc()"></div><div><label>Bonus</label><input type="number" id="psBonus" step="0.01" oninput="calc()"></div></div>'
-+ '<div class="row"><div><label>Overtime</label><input type="number" id="psOT" step="0.01" oninput="calc()"></div><div><label>Commission</label><input type="number" id="psComm" step="0.01" oninput="calc()"></div></div>'
-+ '<div class="row"><div><label>Tax</label><input type="number" id="psTax" step="0.01" oninput="calc()"></div><div><label>EPF/ETF</label><input type="number" id="psEpf" step="0.01" oninput="calc()"></div><div><label>Insurance</label><input type="number" id="psIns" step="0.01" oninput="calc()"></div></div>'
-+ '<div class="row"><div><label>Loan</label><input type="number" id="psLoan" step="0.01" oninput="calc()"></div><div><label>Other Ded.</label><input type="number" id="psOther" step="0.01" oninput="calc()"></div></div>'
-+ '<div class="row"><div><label>Bank</label><input type="text" id="psBank"></div><div><label>Account #</label><input type="text" id="psAcct"></div><div><label>Email (optional)</label><input type="email" id="psEmail"></div></div>'
-+ '<div class="sum"><span>Gross</span><span id="gross">$0.00</span></div>'
-+ '<div class="sum"><span>Deductions</span><span id="ded">$0.00</span></div>'
-+ '<div class="sum net"><span>NET PAY</span><span id="net">$0.00</span></div>'
-+ '<button class="btn" id="psBtn" onclick="genPs()" style="margin-top:10px">Generate Payslip</button>'
-+ '<div id="psMsg" style="font-size:10px;text-align:center;margin-top:8px"></div>'
-+ '</div></div>'
+  // Payslip panel
+  html += '<div id="panel-ps"><div class="card"><h3>Generate Payslip</h3>';
+  html += '<div class="row"><div><label>Employee Name *</label><input type="text" id="psName" value="' + esc(session.name) + '"></div><div><label>Employee ID *</label><input type="text" id="psId"></div></div>';
+  html += '<div class="row"><div><label>Department</label><input type="text" id="psDept"></div><div><label>Designation</label><input type="text" id="psDesig"></div></div>';
+  html += '<div class="row"><div><label>Pay Period From</label><input type="text" id="psFrom"></div><div><label>Pay Period To</label><input type="text" id="psTo"></div><div><label>Payment Date</label><input type="text" id="psPayDate"></div></div>';
+  html += '<div class="row"><div><label>Basic Salary</label><input type="number" id="psBasic" step="0.01" oninput="calc()"></div><div><label>Allowance</label><input type="number" id="psAllow" step="0.01" oninput="calc()"></div><div><label>Bonus</label><input type="number" id="psBonus" step="0.01" oninput="calc()"></div></div>';
+  html += '<div class="row"><div><label>Overtime</label><input type="number" id="psOT" step="0.01" oninput="calc()"></div><div><label>Commission</label><input type="number" id="psComm" step="0.01" oninput="calc()"></div></div>';
+  html += '<div class="row"><div><label>Tax</label><input type="number" id="psTax" step="0.01" oninput="calc()"></div><div><label>EPF/ETF</label><input type="number" id="psEpf" step="0.01" oninput="calc()"></div><div><label>Insurance</label><input type="number" id="psIns" step="0.01" oninput="calc()"></div></div>';
+  html += '<div class="row"><div><label>Loan</label><input type="number" id="psLoan" step="0.01" oninput="calc()"></div><div><label>Other Ded.</label><input type="number" id="psOther" step="0.01" oninput="calc()"></div></div>';
+  html += '<div class="row"><div><label>Bank</label><input type="text" id="psBank"></div><div><label>Account #</label><input type="text" id="psAcct"></div><div><label>Email (optional)</label><input type="email" id="psEmail"></div></div>';
+  html += '<div class="sum"><span>Gross</span><span id="gross">$0.00</span></div>';
+  html += '<div class="sum"><span>Deductions</span><span id="ded">$0.00</span></div>';
+  html += '<div class="sum net"><span>NET PAY</span><span id="net">$0.00</span></div>';
+  html += '<button class="btn" id="psBtn" onclick="genPs()" style="margin-top:10px">Generate Payslip</button>';
+  html += '<div id="psMsg" style="font-size:10px;text-align:center;margin-top:8px"></div>';
+  html += '</div></div>';
 
-// Experience panel
-+ '<div id="panel-ex" style="display:none"><div class="card"><h3>Generate Experience Letter</h3>'
-+ '<div class="row"><div><label>Employee Name *</label><input type="text" id="exName" value="' + esc(session.name) + '"></div><div><label>Position *</label><input type="text" id="exPos"></div></div>'
-+ '<div class="row"><div><label>Shift / Team</label><input type="text" id="exShift"></div><div><label>Certificate Date</label><input type="text" id="exDate"></div></div>'
-+ '<div class="row"><div><label>Training Start</label><input type="text" id="exTrain"></div><div><label>Working Start</label><input type="text" id="exOfficial"></div></div>'
-+ '<div class="row"><div><label>Address</label><input type="text" id="exAddr"></div><div><label>Email (optional)</label><input type="email" id="exEmail"></div></div>'
-+ '<label>Custom Letter Text (optional)</label><textarea id="exBody" rows="3" style="width:100%;margin-bottom:8px"></textarea>'
-+ '<button class="btn" id="exBtn" onclick="genEx()">Generate Experience Letter</button>'
-+ '<div id="exMsg" style="font-size:10px;text-align:center;margin-top:8px"></div>'
-+ '</div></div>'
+  // Experience panel
+  html += '<div id="panel-ex" style="display:none"><div class="card"><h3>Generate Experience Letter</h3>';
+  html += '<div class="row"><div><label>Employee Name *</label><input type="text" id="exName" value="' + esc(session.name) + '"></div><div><label>Position *</label><input type="text" id="exPos"></div></div>';
+  html += '<div class="row"><div><label>Shift / Team</label><input type="text" id="exShift"></div><div><label>Certificate Date</label><input type="text" id="exDate"></div></div>';
+  html += '<div class="row"><div><label>Training Start</label><input type="text" id="exTrain"></div><div><label>Working Start</label><input type="text" id="exOfficial"></div></div>';
+  html += '<div class="row"><div><label>Address</label><input type="text" id="exAddr"></div><div><label>Email (optional)</label><input type="email" id="exEmail"></div></div>';
+  html += '<label>Custom Letter Text (optional)</label><textarea id="exBody" rows="3" style="width:100%;margin-bottom:8px"></textarea>';
+  html += '<button class="btn" id="exBtn" onclick="genEx()">Generate Experience Letter</button>';
+  html += '<div id="exMsg" style="font-size:10px;text-align:center;margin-top:8px"></div>';
+  html += '</div></div>';
 
-+ '<script>var TOKEN="' + session.token + '";'
-+ 'function switchTab(t){document.getElementById("panel-ps").style.display=t==="ps"?"block":"none";document.getElementById("panel-ex").style.display=t==="ex"?"block":"none";document.getElementById("tab-ps").className="tab"+(t==="ps"?" on":"");document.getElementById("tab-ex").className="tab"+(t==="ex"?" on":"")}'
-+ 'function v(id){return document.getElementById(id).value.trim()}'
-+ 'function n(id){var x=parseFloat(document.getElementById(id).value);return isNaN(x)?0:x}'
-+ 'function f(x){return x.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}'
-+ 'function calc(){var g=n("psBasic")+n("psAllow")+n("psBonus")+n("psOT")+n("psComm");var d=n("psTax")+n("psEpf")+n("psIns")+n("psLoan")+n("psOther");document.getElementById("gross").textContent="$"+f(g);document.getElementById("ded").textContent="$"+f(d);document.getElementById("net").textContent="$"+f(g-d)}'
-+ 'function post(action,data,btn,msg){var b=document.getElementById(btn);var m=document.getElementById(msg);m.textContent="";b.disabled=true;b.textContent="Generating...";var f=document.createElement("form");f.method="POST";f.action="";f.target="_blank";data.action=action;data.session=TOKEN;for(var k in data){var i=document.createElement("input");i.name=k;i.value=data[k];f.appendChild(i)}document.body.appendChild(f);f.submit();document.body.removeChild(f);setTimeout(function(){b.disabled=false;b.textContent=action==="generate_payslip"?"Generate Payslip":"Generate Experience Letter";m.textContent="Opening in new tab...";m.style.color="#10b981"},1500)}'
-+ 'function genPs(){var d={employeeName:v("psName"),employeeId:v("psId"),department:v("psDept"),designation:v("psDesig"),payPeriodFrom:v("psFrom"),payPeriodTo:v("psTo"),paymentDate:v("psPayDate"),bankName:v("psBank"),accountNumber:v("psAcct"),basicSalary:v("psBasic"),allowance:v("psAllow"),attendanceBonus:v("psBonus"),overtime:v("psOT"),commission:v("psComm"),tax:v("psTax"),epfEtf:v("psEpf"),insurance:v("psIns"),loanDeduction:v("psLoan"),otherDeduction:v("psOther"),emailTo:v("psEmail"),months:"1"};if(!d.employeeName||!d.employeeId){var m=document.getElementById("psMsg");m.textContent="Name and ID required.";m.style.color="#ef4444";return}post("generate_payslip",d,"psBtn","psMsg")}'
-+ 'function genEx(){var d={employeeName:v("exName"),position:v("exPos"),shift:v("exShift"),trainingStart:v("exTrain"),officialDate:v("exOfficial"),address:v("exAddr"),certDate:v("exDate"),bodyText:v("exBody"),emailTo:v("exEmail")};if(!d.employeeName||!d.position){var m=document.getElementById("exMsg");m.textContent="Name and Position required.";m.style.color="#ef4444";return}post("generate_experience",d,"exBtn","exMsg")}'
-+ '</script></body></html>';
+  // JavaScript
+  html += '<script>var TOKEN="' + session.token + '";';
+  html += 'function switchTab(t){document.getElementById("panel-ps").style.display=t==="ps"?"block":"none";document.getElementById("panel-ex").style.display=t==="ex"?"block":"none";document.getElementById("tab-ps").className="tab"+(t==="ps"?" on":"");document.getElementById("tab-ex").className="tab"+(t==="ex"?" on":"")}';
+  html += 'function v(id){return document.getElementById(id).value.trim()}';
+  html += 'function n(id){var x=parseFloat(document.getElementById(id).value);return isNaN(x)?0:x}';
+  html += 'function f(x){return x.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}';
+  html += 'function calc(){var g=n("psBasic")+n("psAllow")+n("psBonus")+n("psOT")+n("psComm");var d=n("psTax")+n("psEpf")+n("psIns")+n("psLoan")+n("psOther");document.getElementById("gross").textContent="$"+f(g);document.getElementById("ded").textContent="$"+f(d);document.getElementById("net").textContent="$"+f(g-d)}';
+  html += 'function postForm(action,data,btnId,msgId){var b=document.getElementById(btnId);var m=document.getElementById(msgId);m.textContent="";b.disabled=true;b.textContent="Generating...";var form=document.createElement("form");form.method="POST";form.action="";form.target="_blank";data.action=action;data.session=TOKEN;for(var k in data){var inp=document.createElement("input");inp.name=k;inp.value=data[k];form.appendChild(inp)}document.body.appendChild(form);form.submit();document.body.removeChild(form);setTimeout(function(){b.disabled=false;b.textContent=action==="generate_payslip"?"Generate Payslip":"Generate Experience Letter";m.textContent="Opening in new tab...";m.style.color="#10b981"},1500)}';
+  html += 'function genPs(){var d={employeeName:v("psName"),employeeId:v("psId"),department:v("psDept"),designation:v("psDesig"),payPeriodFrom:v("psFrom"),payPeriodTo:v("psTo"),paymentDate:v("psPayDate"),bankName:v("psBank"),accountNumber:v("psAcct"),basicSalary:v("psBasic"),allowance:v("psAllow"),attendanceBonus:v("psBonus"),overtime:v("psOT"),commission:v("psComm"),tax:v("psTax"),epfEtf:v("psEpf"),insurance:v("psIns"),loanDeduction:v("psLoan"),otherDeduction:v("psOther"),emailTo:v("psEmail"),months:"1"};if(!d.employeeName||!d.employeeId){var m=document.getElementById("psMsg");m.textContent="Name and ID required.";m.style.color="#ef4444";return}postForm("generate_payslip",d,"psBtn","psMsg")}';
+  html += 'function genEx(){var d={employeeName:v("exName"),position:v("exPos"),shift:v("exShift"),trainingStart:v("exTrain"),officialDate:v("exOfficial"),address:v("exAddr"),certDate:v("exDate"),bodyText:v("exBody"),emailTo:v("exEmail")};if(!d.employeeName||!d.position){var m=document.getElementById("exMsg");m.textContent="Name and Position required.";m.style.color="#ef4444";return}postForm("generate_experience",d,"exBtn","exMsg")}';
+  html += 'function doLogout(){location.href=location.href.split("?")[0]}';
+  html += '</script></body></html>';
+  return html;
 }
 
 // ==================== PAYSLIP GENERATION ====================
