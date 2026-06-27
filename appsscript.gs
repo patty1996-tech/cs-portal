@@ -14,6 +14,12 @@ var SESSION_HOURS = 8;
 
 function doGet(e) {
   var p = e.parameter || {};
+
+  // Quick deployment test
+  if (p.test === "1") {
+    return ContentService.createTextOutput("DEPLOY OK - v4-minimal - " + new Date().toISOString());
+  }
+
   var session = str(p.session);
 
   if (session) {
