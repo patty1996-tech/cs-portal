@@ -7,7 +7,7 @@ var HR_EMAIL = "hr@talentnexus.com";
 var CO_WEBSITE = "www.talentnexus.com";
 var CO_ADDRESS_UK = "Suite 10 & 11, The Sanctuary, 23 Oak Hill Grove, Surbiton, Surrey KT6 6DU, United Kingdom";
 var CO_ADDRESS_TH = "The Offices at CentralWorld, 999/9 Rama I Road, 28th Floor, Pathum Wan, Bangkok 10330, Thailand";
-var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwmcwgEUU5dBaFiQkC0H1ZudIOkQUiiMOwdrLk6SevgdnkZTyndVrWz-yHmzGlK9A/exec";
+var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwtcjR_XMIyZFixa3RymCqIymRP6csBSuVoGGb8UyDo69iIJaQtjwHYqce7tn-S-gjZ/exec";
 var SESSION_HOURS = 8;
 
 // ==================== ENTRY POINTS ====================
