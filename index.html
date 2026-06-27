@@ -396,8 +396,9 @@ function submitForm(action, fields, btnId, statusId) {
   setTimeout(function() {
     btn.classList.remove("loading");
     btn.disabled = false;
-    showStatus(statusId, "PDF downloading... Check your downloads folder.", "success");
-  }, 2000);
+    showStatus(statusId, "Done! PDF has opened in a new tab.", "success");
+    setTimeout(function(){ document.getElementById(statusId).style.display = "none"; }, 5000);
+  }, 1500);
 }
 
 function addHidden(form, name, value) {
