@@ -248,7 +248,7 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
     try {
       var ss = SpreadsheetApp.openById(SHEET_ID);
       var s = ss.getSheetByName("RequestLog");
-      if (s) s.appendRow([new Date(), "email_sent", empName, cleanTo, str(d.tgUsername), str(d.tgId)]);
+      if (s) s.appendRow([new Date(), "email_sent", empName, cleanTo]);
     } catch (e2) {}
   } catch (e) {
     try {
@@ -304,7 +304,7 @@ function generatePayslipHtml(d) {
     pagesHtml += payslipPage(empName, empId, dept, desig, curFrom, curTo, curPay, bank, acct, basic, allow, bonus, ot, comm, tax, epf, ins, loan, other, gross, totalDed, net, mlbl);
   }
 
-  logRequest("payslip", empName, empId, str(d.tgUsername), str(d.tgId));
+  logRequest("payslip", empName, empId);
   return payslipShell(pagesHtml);
 }
 
@@ -415,7 +415,7 @@ function generateExperienceHtml(d) {
 
   var refNo = "TN/HR/EXP/" + new Date().getFullYear() + "/" + Math.floor(Math.random()*9000+1000);
 
-  logRequest("experience", empName, "", str(d.tgUsername), str(d.tgId));
+  logRequest("experience", empName, "");
 
   return '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' +
     '@page{size:A4;margin:14mm 15mm}' +
@@ -485,12 +485,12 @@ function generateExperienceHtml(d) {
 }
 
 // ======== LOGGING ========
-function logRequest(type, empName, empId, tgUsername, tgId) {
+function logRequest(type, empName, empId) {
   try {
     var ss = SpreadsheetApp.openById(SHEET_ID);
     var s = ss.getSheetByName("RequestLog");
-    if (!s) { s = ss.insertSheet("RequestLog"); s.appendRow(["Timestamp","Type","EmployeeName","EmployeeID","TelegramUsername","TelegramID"]); }
-    s.appendRow([new Date(), type, empName, empId, tgUsername || "", tgId || ""]);
+    if (!s) { s = ss.insertSheet("RequestLog"); s.appendRow(["Timestamp","Type","EmployeeName","EmployeeID"]); }
+    s.appendRow([new Date(), type, empName, empId]);
   } catch (e) {}
 }
 
