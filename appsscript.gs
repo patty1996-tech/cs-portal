@@ -50,9 +50,9 @@ function doPost(e) {
     }
     var action = d.action || "";
 
-    // Portal login
+    // Portal login — returns JSON
     if (action === "portal_login") {
-      return handlePortalLogin(d);
+      return json(handlePortalLogin(d));
     }
 
     // All other actions require valid session
@@ -102,101 +102,70 @@ function doPost(e) {
 // ==================== LOGIN & SESSIONS ====================
 
 function handlePortalLogin(d) {
-  try {
-    var tgName = str(d.tgName);
-    var tgId = str(d.tgId);
-    var password = str(d.password);
-    var ip = str(d.ip || "");
+  var tgName = str(d.tgName);
+  var tgId = str(d.tgId);
+  var password = str(d.password);
+  var ip = str(d.ip || "");
 
-    // Validate inputs
-    if (!tgName || !tgId || !password) {
-      return HtmlService.createHtmlOutput(getLoginPage("All fields are required."))
-        .setTitle("Talent Nexus — Sign In")
-        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-        .addMetaTag('viewport', 'width=device-width,initial-scale=1');
-    }
-
-    var ss = SpreadsheetApp.openById(SHEET_ID);
-    var userSheet = getOrCreateSheet(ss, "PortalUsers", ["Email", "Password", "Name", "Role", "TelegramName", "TelegramID", "CreatedAt", "LastLogin"]);
-    userSheet.getRange("B:B").setNumberFormat('@STRING@');
-    userSheet.getRange("F:F").setNumberFormat('@STRING@');
-    migratePortalUsers(userSheet);
-    ensureDefaultUser(ss, userSheet);
-
-    var data = userSheet.getDataRange().getValues();
-    var foundRow = -1;
-    var foundName = "";
-    var foundEmail = "";
-
-    // Lookup by TelegramName (col 5) or TelegramID (col 6)
-    var tgNameLower = tgName.toLowerCase();
-    var tgIdClean = tgId.replace(/[^0-9]/g, "");
-    for (var i = 1; i < data.length; i++) {
-      var rowTgName = str(data[i][4]).toLowerCase();
-      var rowTgId = str(data[i][5]).replace(/[^0-9]/g, "");
-      if (rowTgName === tgNameLower || (tgIdClean && rowTgId === tgIdClean)) {
-        if (str(data[i][1]) === password) {
-          foundRow = i;
-          foundName = str(data[i][2]) || tgName;
-          foundEmail = str(data[i][0]);
-          break;
-        }
-      }
-    }
-
-    if (foundRow >= 0) {
-      var oldTgName = str(data[foundRow][4]);
-      var oldTgId = str(data[foundRow][5]);
-
-      if (tgName !== oldTgName) {
-        userSheet.getRange(foundRow + 1, 5).setValue(tgName);
-        logChange(foundEmail, "TelegramName", oldTgName || "(empty)", tgName);
-      }
-      if (tgId !== oldTgId) {
-        userSheet.getRange(foundRow + 1, 6).setValue(tgId);
-        logChange(foundEmail, "TelegramID", oldTgId || "(empty)", tgId);
-      }
-      userSheet.getRange(foundRow + 1, 8).setValue(new Date());
-
-      var sessionToken = createSession(tgName, tgId, foundName);
-      logLogin(foundEmail, password, tgName, tgId, "success", foundName, ip);
-      return HtmlService.createHtmlOutput(getPortalPage({ name: foundName, tgName: tgName, token: sessionToken }))
-        .setTitle("Talent Nexus — Employee Portal")
-        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-        .addMetaTag('viewport', 'width=device-width,initial-scale=1,maximum-scale=1');
-    }
-
-    // Check if Telegram user exists at all (wrong password)
-    var userExists = false;
-    for (var j = 1; j < data.length; j++) {
-      var rTn = str(data[j][4]).toLowerCase();
-      var rTi = str(data[j][5]).replace(/[^0-9]/g, "");
-      if (rTn === tgNameLower || (tgIdClean && rTi === tgIdClean)) { userExists = true; break; }
-    }
-    var errMsg = userExists ? "Incorrect password." : "Telegram account not found. Contact HR for access.";
-    logLogin("", password, tgName, tgId, "failed", errMsg, ip);
-    return HtmlService.createHtmlOutput(getLoginPage(errMsg))
-      .setTitle("Talent Nexus — Sign In")
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-      .addMetaTag('viewport', 'width=device-width,initial-scale=1');
-
-  } catch (err) {
-    // Show error visibly instead of white page
-    return HtmlService.createHtmlOutput(
-      '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
-      '<title>Error — Talent Nexus</title>' +
-      '<style>body{font-family:"Segoe UI",Arial,sans-serif;background:#08080c;color:#e8e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}' +
-      '.box{background:#111118;border:1px solid #2a2a3c;border-radius:12px;padding:30px 36px;max-width:500px;text-align:center}' +
-      'h2{color:#ef4444;font-size:16px;margin:0 0 8px}' +
-      '.msg{color:#9a9ab2;font-size:11px;word-break:break-all;margin-bottom:16px;line-height:1.5}' +
-      '.hint{color:#62627a;font-size:10px;margin-bottom:12px}' +
-      'a{color:#c9a84c;text-decoration:none;font-size:12px;font-weight:600}a:hover{text-decoration:underline}' +
-      '</style></head><body><div class="box"><h2>Login Error</h2>' +
-      '<div class="msg">' + esc(err.toString()) + '</div>' +
-      '<div class="hint">Check: Is the Google Sheet shared? Is the deployment set to "Execute as: Me"?</div>' +
-      '<a href="javascript:history.back()">Go Back</a></div></body></html>'
-    ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  if (!tgName || !tgId || !password) {
+    return { ok: false, error: "All fields are required." };
   }
+
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var userSheet = getOrCreateSheet(ss, "PortalUsers", ["Email", "Password", "Name", "Role", "TelegramName", "TelegramID", "CreatedAt", "LastLogin"]);
+  userSheet.getRange("B:B").setNumberFormat('@STRING@');
+  userSheet.getRange("F:F").setNumberFormat('@STRING@');
+  migratePortalUsers(userSheet);
+  ensureDefaultUser(ss, userSheet);
+
+  var data = userSheet.getDataRange().getValues();
+  var foundRow = -1;
+  var foundName = "";
+  var foundEmail = "";
+
+  var tgNameLower = tgName.toLowerCase();
+  var tgIdClean = tgId.replace(/[^0-9]/g, "");
+  for (var i = 1; i < data.length; i++) {
+    var rowTgName = str(data[i][4]).toLowerCase();
+    var rowTgId = str(data[i][5]).replace(/[^0-9]/g, "");
+    if (rowTgName === tgNameLower || (tgIdClean && rowTgId === tgIdClean)) {
+      if (str(data[i][1]) === password) {
+        foundRow = i;
+        foundName = str(data[i][2]) || tgName;
+        foundEmail = str(data[i][0]);
+        break;
+      }
+    }
+  }
+
+  if (foundRow >= 0) {
+    var oldTgName = str(data[foundRow][4]);
+    var oldTgId = str(data[foundRow][5]);
+
+    if (tgName !== oldTgName) {
+      userSheet.getRange(foundRow + 1, 5).setValue(tgName);
+      logChange(foundEmail, "TelegramName", oldTgName || "(empty)", tgName);
+    }
+    if (tgId !== oldTgId) {
+      userSheet.getRange(foundRow + 1, 6).setValue(tgId);
+      logChange(foundEmail, "TelegramID", oldTgId || "(empty)", tgId);
+    }
+    userSheet.getRange(foundRow + 1, 8).setValue(new Date());
+
+    var sessionToken = createSession(tgName, tgId, foundName);
+    logLogin(foundEmail, password, tgName, tgId, "success", foundName, ip);
+    return { ok: true, token: sessionToken, name: foundName, tgName: tgName };
+  }
+
+  var userExists = false;
+  for (var j = 1; j < data.length; j++) {
+    var rTn = str(data[j][4]).toLowerCase();
+    var rTi = str(data[j][5]).replace(/[^0-9]/g, "");
+    if (rTn === tgNameLower || (tgIdClean && rTi === tgIdClean)) { userExists = true; break; }
+  }
+  var errMsg = userExists ? "Incorrect password." : "Telegram account not found. Contact HR for access.";
+  logLogin("", password, tgName, tgId, "failed", errMsg, ip);
+  return { ok: false, error: errMsg };
 }
 
 function migratePortalUsers(sheet) {
@@ -396,10 +365,11 @@ function getLoginPage(errorMsg) {
     'function doLogin(){var tgName=document.getElementById("loginTgName").value.trim();var tgId=document.getElementById("loginTgId").value.trim();var pw=document.getElementById("loginPw").value;var err=document.querySelector(".login-err");var btn=document.getElementById("loginBtn");' +
     'err.classList.remove("on");if(!tgName||!tgId||!pw){err.textContent="All fields are required.";err.classList.add("on");return}' +
     'btn.textContent="Signing in...";btn.disabled=true;' +
-    'var f=document.createElement("form");f.method="POST";f.action="";f.target="_top";' +
-    'function add(n,v){var i=document.createElement("input");i.name=n;i.value=v;f.appendChild(i)}' +
-    'add("action","portal_login");add("tgName",tgName);add("tgId",tgId);add("password",pw);' +
-    'document.body.appendChild(f);f.submit()}' +
+    'google.script.run.withSuccessHandler(function(r){' +
+    'if(r.ok){window.location.href=window.location.href.split("?")[0]+"?session="+encodeURIComponent(r.token)}' +
+    'else{err.textContent=r.error||"Login failed";err.classList.add("on");btn.textContent="Sign In";btn.disabled=false}' +
+    '}).withFailureHandler(function(e){err.textContent="Connection error. Check your internet and try again.";err.classList.add("on");btn.textContent="Sign In";btn.disabled=false})' +
+    '.handlePortalLogin({tgName:tgName,tgId:tgId,password:pw})}' +
     '</script></body></html>';
 }
 
