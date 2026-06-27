@@ -36,15 +36,11 @@ function doGet(e) {
     }
   }
 
-  try {
-    var loginHtml = getLoginPage(str(p.error));
-    return HtmlService.createHtmlOutput(loginHtml)
-      .setTitle("Talent Nexus — Sign In")
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-      .addMetaTag('viewport','width=device-width,initial-scale=1');
-  } catch(e) {
-    return ContentService.createTextOutput("LOGIN PAGE ERROR: " + e.toString());
-  }
+  // Temporarily return ultra-simple HTML to test rendering
+  return HtmlService.createHtmlOutput('<!DOCTYPE html><html><head><title>Test</title></head><body style="background:#08080c;color:#fff;font-family:Arial;display:flex;align-items:center;justify-content:center;height:100vh"><div style="text-align:center"><h1 style="color:#c9a84c">Talent Nexus</h1><p>Login test - if you see this, HTML rendering works</p></div></body></html>')
+    .setTitle("Test")
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+    .addMetaTag('viewport','width=device-width,initial-scale=1');
 }
 
 function doPost(e) {
