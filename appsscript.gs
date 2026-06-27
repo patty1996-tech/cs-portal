@@ -261,10 +261,10 @@ function generatePayslipHtml(d) {
   }
 
   logRequest("payslip", empName, empId, str(d.tgUsername), str(d.tgId));
-  return payslipShell(pagesHtml, str(d.tgUsername), str(d.tgId));
+  return payslipShell(pagesHtml);
 }
 
-function payslipShell(pages, tgUser, tgId) {
+function payslipShell(pages) {
   return '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' +
     '@page{size:A4;margin:8mm 10mm}' +
     'body{font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;color:#1a1a2e;font-size:9pt;line-height:1.45;margin:0}' +
@@ -363,7 +363,6 @@ function payslipPage(nm,id,dp,ds,pf,pt,pd,bk,ac,ba,al,bo,ot,cm,tx,ep,ins,ln,oh,g
     '<b>Talent Nexus</b> &bull; ' + CO_WEBSITE + ' &bull; ' + HR_EMAIL + '<br>' +
     'UK: ' + CO_ADDRESS_UK + '<br>' +
     'Thailand: ' + CO_ADDRESS_TH + '</div>' +
-    (tgUser ? '<div style="text-align:right;font-size:7pt;color:#999;margin-top:8px;padding-top:6px;border-top:1px solid #eee">Processed by: <b>' + esc(tgUser) + '</b>' + (tgId ? ' (ID: ' + esc(tgId) + ')' : '') + ' &bull; ' + new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"}) + '</div>' : '') +
 
     '</div>';
 }
@@ -461,7 +460,6 @@ function generateExperienceHtml(d) {
     'UK Office: ' + CO_ADDRESS_UK + ' &bull; Thailand Office: ' + CO_ADDRESS_TH + '<br>' +
     'This is a computer-generated document.' +
     '</div>' +
-    (str(d.tgUsername) ? '<div style="text-align:right;font-size:7pt;color:#999;margin-top:4px;padding:0 15px 8px">Processed by: <b>' + esc(str(d.tgUsername)) + '</b>' + (str(d.tgId) ? ' (ID: ' + esc(str(d.tgId)) + ')' : '') + ' &bull; ' + new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"}) + '</div>' : '') +
 
     '</body></html>';
 }
