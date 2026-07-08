@@ -43,6 +43,12 @@ function doGet(e) {
         var filename2 = safeFilename(d2.employeeName || "Employee") + "_Experience_Letter.pdf";
         return returnPdf(html2, filename2);
       }
+      if (found.type === "coe") {
+        var d3 = JSON.parse(found.payload);
+        var html3 = generateCoeHtml(d3);
+        var filename3 = safeFilename(d3.employeeName || "Employee") + "_Certificate_of_Employment.pdf";
+        return returnPdf(html3, filename3);
+      }
       return pdfError("Unknown document type.");
     } catch (err) {
       return pdfError(err.toString());
@@ -87,6 +93,12 @@ function doPost(e) {
       var filename2 = safeFilename(d.employeeName || "Employee") + "_Experience_Letter.pdf";
       sendEmailIfRequested(d, html2, filename2, "experience");
       return returnPdf(html2, filename2);
+    }
+    if (action === "generate_coe") {
+      var html3 = generateCoeHtml(d);
+      var filename3 = safeFilename(d.employeeName || "Employee") + "_Certificate_of_Employment.pdf";
+      sendEmailIfRequested(d, html3, filename3, "coe");
+      return returnPdf(html3, filename3);
     }
     return json({ error: "Unknown action: " + action });
   } catch (err) {
@@ -142,10 +154,12 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
   var token = storeDocumentToken(docType, d);
   var docLink = APPS_SCRIPT_URL + "?token=" + encodeURIComponent(token);
 
-  var docLabel = docType === "payslip" ? "Payslip" : "Experience Certificate";
+  var docLabel = docType === "payslip" ? "Payslip" : (docType === "coe" ? "Certificate of Employment" : "Experience Certificate");
   var docMsg = docType === "payslip"
     ? "Your payslip is ready. Click the Download button below to view, print, or save your document. For inquiries, contact the HR department."
-    : "Your experience certificate is ready. Click the Download button below to view, print, or save your document. For inquiries, contact the HR department.";
+    : (docType === "coe"
+      ? "Your Certificate of Employment is ready. Click the Download button below to view, print, or save your document. For inquiries, contact the HR department."
+      : "Your experience certificate is ready. Click the Download button below to view, print, or save your document. For inquiries, contact the HR department.");
 
   try {
     var cleanTo = emailTo.trim();
@@ -191,7 +205,7 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
         '<tr><td style="padding:6px 14px;font-size:13px;font-weight:700;color:#1a1a2e">NET PAY</td><td style="padding:6px 14px;font-size:15px;font-weight:700;color:#1a6b3c;text-align:right">USD $' + fmt2(net) + '</td></tr>' +
         '</table>' +
         '</td></tr></table>';
-    } else {
+    } else if (docType === "experience") {
       var expP = str(d.position), expS = str(d.shift);
       var expT = str(d.trainingStart), expO = str(d.officialDate), expA = str(d.address);
       docContent = '<table cellpadding="0" cellspacing="0" style="background:#f9f9f9;border:1px solid #eee;border-radius:5px;width:100%;margin:10px 0"><tr><td style="padding:10px 14px">' +
@@ -203,6 +217,25 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
         '<tr><td style="padding:3px 0;color:#888">Training Start:</td><td style="padding:3px 0">' + esc(expT) + '</td></tr>' +
         '<tr><td style="padding:3px 0;color:#888">Working Start:</td><td style="padding:3px 0">' + esc(expO) + '</td></tr>' +
         '<tr><td style="padding:3px 0;color:#888">Address:</td><td style="padding:3px 0">' + esc(expA) + '</td></tr>' +
+        '</table></td></tr></table>';
+    } else {
+      var coeP = str(d.position), coeD = str(d.department);
+      var coeS = str(d.startDate), coeA = str(d.address);
+      var coeBasic = num(d.basicSalary), coeAtt = num(d.attendanceBonus), coePerf = num(d.performanceBonus);
+      var coeTotal = coeBasic + coeAtt + coePerf;
+      var fmt3 = function(v){return v.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});};
+      docContent = '<table cellpadding="0" cellspacing="0" style="background:#f9f9f9;border:1px solid #eee;border-radius:5px;width:100%;margin:10px 0"><tr><td style="padding:10px 14px">' +
+        '<p style="font-size:12px;color:#555;margin:0 0 6px"><b>' + esc(docLabel) + '</b> &bull; ' + today + '</p>' +
+        '<table style="width:100%;border-collapse:collapse;font-size:11px">' +
+        '<tr><td style="padding:3px 0;color:#888">Employee:</td><td style="padding:3px 0"><b>' + esc(empName) + '</b></td></tr>' +
+        '<tr><td style="padding:3px 0;color:#888">Position:</td><td style="padding:3px 0">' + esc(coeP) + '</td></tr>' +
+        '<tr><td style="padding:3px 0;color:#888">Department:</td><td style="padding:3px 0">' + esc(coeD) + '</td></tr>' +
+        '<tr><td style="padding:3px 0;color:#888">Start Date:</td><td style="padding:3px 0">' + esc(coeS) + '</td></tr>' +
+        '<tr><td style="padding:3px 0;color:#888">Address:</td><td style="padding:3px 0">' + esc(coeA) + '</td></tr>' +
+        '<tr><td style="padding:3px 0;color:#888">Basic Salary:</td><td style="padding:3px 0">PHP ₱' + fmt3(coeBasic) + '</td></tr>' +
+        (coeAtt > 0 ? '<tr><td style="padding:3px 0;color:#888">Attendance Bonus:</td><td style="padding:3px 0">PHP ₱' + fmt3(coeAtt) + '</td></tr>' : '') +
+        (coePerf > 0 ? '<tr><td style="padding:3px 0;color:#888">Performance Bonus:</td><td style="padding:3px 0">PHP ₱' + fmt3(coePerf) + '</td></tr>' : '') +
+        '<tr style="border-top:1px solid #ddd"><td style="padding:3px 0;color:#1a1a2e;font-weight:700">Total Compensation:</td><td style="padding:3px 0;font-weight:700;color:#1a6b3c">PHP ₱' + fmt3(coeTotal) + '</td></tr>' +
         '</table></td></tr></table>';
     }
 
@@ -464,6 +497,108 @@ function generateExperienceHtml(d) {
     '<tr><td class="lbl">Shift / Team</td><td>' + esc(shift) + '</td></tr>' +
     '<tr><td class="lbl">Training Start Date</td><td>' + esc(trainStart) + '</td></tr>' +
     '<tr><td class="lbl">Working Start Date</td><td>' + esc(offDate) + '</td></tr>' +
+    '<tr><td class="lbl">Address on Record</td><td>' + esc(address) + '</td></tr>' +
+    '</table>' +
+
+    '<div class="sig">' +
+    '<div class="sig-sign">' + HR_NAME + '</div>' +
+    '<div class="sig-line"></div>' +
+    '<div class="sig-name">' + HR_NAME + '</div>' +
+    '<div class="sig-role">Human Resources Representative</div>' +
+    '<div class="sig-hr">TALENT NEXUS</div>' +
+    '</div>' +
+
+    '<div class="ft">' +
+    '<b>Talent Nexus</b> &bull; ' + CO_WEBSITE + ' &bull; ' + HR_EMAIL + '<br>' +
+    'UK Office: ' + CO_ADDRESS_UK + ' &bull; Thailand Office: ' + CO_ADDRESS_TH + '<br>' +
+    'This is a computer-generated document.' +
+    '</div>' +
+
+    '</body></html>';
+}
+
+function generateCoeHtml(d) {
+  var empName = str(d.employeeName), position = str(d.position);
+  var department = str(d.department), startDate = str(d.startDate);
+  var address = str(d.address);
+  var issueDate = str(d.issueDate) || new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"});
+  var bodyText = str(d.bodyText);
+  var firstName = esc(empName.split(" ")[0]);
+
+  var basicSalary = num(d.basicSalary);
+  var attBonus = num(d.attendanceBonus);
+  var perfBonus = num(d.performanceBonus);
+  var totalComp = basicSalary + attBonus + perfBonus;
+
+  if (!empName || !position) return "<h3>Error: Employee Name and Position are required.</h3>";
+
+  var fmt = function(v){return v.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});};
+  var amt = function(v){return v>0?"PHP ₱"+fmt(v):"—";};
+
+  var defaultBody =
+    '<p>This is to certify that <b>' + esc(empName) + '</b> has been an employee of <b>Talent Nexus</b> since <b>' + esc(startDate) + '</b>, holding the position of <b>' + esc(position) + '</b>' + (department?' in the <b>' + esc(department) + '</b>':'') + '. ' + firstName + ' is entitled to compensation and benefits as follows:</p>' +
+    '<p><b>Compensation:</b><br>' +
+    'Basic Salary &mdash; PHP ₱' + fmt(basicSalary) + '<br>' +
+    (attBonus > 0 ? 'Attendance Bonus &mdash; PHP ₱' + fmt(attBonus) + '<br>' : '') +
+    (perfBonus > 0 ? 'Performance Bonus &mdash; PHP ₱' + fmt(perfBonus) + '<br>' : '') +
+    '<b>Total Monthly Compensation &mdash; PHP ₱' + fmt(totalComp) + '</b></p>' +
+    '<p>' + firstName + ' has demonstrated the qualities of hard work, good quality performance, and possesses good moral character. ' + firstName + ' has consistently shown dedication and professionalism throughout their tenure with the organization.</p>' +
+    '<p>This certification is being issued upon the request of ' + firstName + ' for whatever legal purposes it may serve.</p>';
+
+  var refNo = "TN/HR/COE/" + new Date().getFullYear() + "/" + Math.floor(Math.random()*9000+1000);
+
+  logRequest("coe", empName, "");
+
+  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' +
+    '@page{size:A4;margin:14mm 15mm}' +
+    'body{font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;color:#1a1a2e;font-size:10pt;line-height:1.7;margin:0}' +
+    '.hdr{width:100%;background:#1a1a2e;padding:10px 16px}' +
+    '.hdr-tbl{width:100%}.hdr-tbl td{padding:2px 8px}' +
+    '.hdr-logo{width:30px;height:30px;background:#c9a84c;text-align:center;color:#fff;font-weight:900;font-size:13px}' +
+    '.hdr-co{color:#fff;font-size:12pt;font-weight:700;letter-spacing:0.5px}' +
+    '.hdr-tag{color:#c9a84c;font-size:6pt;text-transform:uppercase;letter-spacing:1.5px}' +
+    '.title{text-align:center;font-size:13pt;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:14px 0 2px}' +
+    '.line{width:50px;height:2px;background:#c9a84c;margin:0 auto 12px}' +
+    '.ref{font-size:7pt;color:#999;margin-bottom:8px}' +
+    '.drow{text-align:right;font-size:8.5pt;margin-bottom:8px}' +
+    '.to{font-size:8.5pt;font-weight:700;margin-bottom:10px}' +
+    '.body-text{font-size:10pt;text-align:justify;margin-bottom:8px;line-height:1.9}' +
+    '.body-text p{margin:0 0 14px;text-indent:0}' +
+    '.dtbl{width:100%;border-collapse:collapse;border:1px solid #ddd;margin:12px 0}' +
+    '.dtbl td{padding:4px 10px;font-size:8pt;border:1px solid #eee}' +
+    '.dtbl td.lbl{background:#f8f8f8;font-weight:600;color:#555;width:28%}' +
+    '.sig{margin-top:26px}' +
+    '.sig-sign{font-family:"Segoe Script","Brush Script MT","Great Vibes",cursive;font-size:16pt;color:#1a1a2e;margin-bottom:4px}' +
+    '.sig-line{border-top:1.5px solid #1a1a2e;width:170px;margin-bottom:3px}' +
+    '.sig-name{font-weight:700;font-size:9.5pt}' +
+    '.sig-role{font-size:7.5pt;color:#666}' +
+    '.sig-hr{font-size:7.5pt;color:#c9a84c;font-weight:600;margin-top:1px}' +
+    '.ft{margin-top:20px;border-top:1px solid #ddd;padding-top:6px;text-align:center;font-size:6.5pt;color:#aaa}' +
+    '</style></head><body>' +
+
+    '<table class="hdr-tbl"><tr>' +
+    '<td width="34"><table><tr><td class="hdr-logo">TN</td></tr></table></td>' +
+    '<td><div class="hdr-co">TALENT NEXUS</div><div class="hdr-tag">Connecting Talent. Creating Impact.</div></td>' +
+    '</tr></table>' +
+
+    '<div class="title">CERTIFICATE OF EMPLOYMENT</div>' +
+    '<div class="line"></div>' +
+
+    '<div class="ref">Ref: ' + refNo + '</div>' +
+    '<div class="drow"><b>Issued:</b> ' + esc(issueDate) + '</div>' +
+    '<div class="to">TO WHOM IT MAY CONCERN</div>' +
+
+    '<div class="body-text">' + (bodyText || defaultBody) + '</div>' +
+
+    '<table class="dtbl">' +
+    '<tr><td class="lbl">Employee Name</td><td>' + esc(empName) + '</td></tr>' +
+    '<tr><td class="lbl">Position Held</td><td>' + esc(position) + '</td></tr>' +
+    '<tr><td class="lbl">Department</td><td>' + esc(department) + '</td></tr>' +
+    '<tr><td class="lbl">Start Date</td><td>' + esc(startDate) + '</td></tr>' +
+    '<tr><td class="lbl">Basic Salary</td><td>PHP ₱' + fmt(basicSalary) + '</td></tr>' +
+    (attBonus > 0 ? '<tr><td class="lbl">Attendance Bonus</td><td>PHP ₱' + fmt(attBonus) + '</td></tr>' : '') +
+    (perfBonus > 0 ? '<tr><td class="lbl">Performance Bonus</td><td>PHP ₱' + fmt(perfBonus) + '</td></tr>' : '') +
+    '<tr><td class="lbl">Total Monthly Compensation</td><td><b>PHP ₱' + fmt(totalComp) + '</b></td></tr>' +
     '<tr><td class="lbl">Address on Record</td><td>' + esc(address) + '</td></tr>' +
     '</table>' +
 

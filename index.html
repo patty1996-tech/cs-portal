@@ -192,6 +192,10 @@ textarea { min-height: 80px; resize: vertical; }
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:-2px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
       Experience Letter
     </button>
+    <button class="tab" onclick="switchTab('coe')" id="tab-coe">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:-2px"><circle cx="12" cy="12" r="10"/><polyline points="8 12 11 15 16 9"/></svg>
+      COE
+    </button>
   </div>
 
   <!-- PAYSLIP FORM -->
@@ -321,6 +325,57 @@ textarea { min-height: 80px; resize: vertical; }
     </div>
   </div>
 
+  <!-- COE FORM -->
+  <div id="panel-coe" style="display:none">
+    <div class="card">
+      <div class="info-box">
+        Fill in your details to generate a <b>Certificate of Employment</b> PDF. The letter body can be customized before generating.
+      </div>
+
+      <div class="section-hd">Employee Information</div>
+      <div class="form-row">
+        <div class="form-group"><label>Employee Name *</label><input type="text" id="coeName" placeholder="Full legal name"></div>
+        <div class="form-group"><label>Position *</label><input type="text" id="coePos" placeholder="e.g. Customer Support"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Department</label><input type="text" id="coeDept" placeholder="e.g. Customer Service Department"></div>
+        <div class="form-group"><label>Start Date</label><input type="text" id="coeStart" placeholder="e.g. March 10, 2026"></div>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group"><label>Basic Salary</label><input type="number" id="coeBasic" placeholder="0.00" step="0.01" oninput="calcCoeTotal()"></div>
+        <div class="form-group"><label>Attendance Bonus</label><input type="number" id="coeAttBonus" placeholder="0.00" step="0.01" oninput="calcCoeTotal()"></div>
+        <div class="form-group"><label>Performance Bonus</label><input type="number" id="coePerfBonus" placeholder="0.00" step="0.01" oninput="calcCoeTotal()"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Address</label><input type="text" id="coeAddr" placeholder="Full address"></div>
+        <div class="form-group"><label>Issue Date</label><input type="text" id="coeDate" placeholder="e.g. July 08, 2026"></div>
+      </div>
+
+      <div class="section-hd">Compensation Summary</div>
+      <div class="calc-row"><span>Total Monthly Compensation</span><span id="calcCoeTotal">PHP ₱0.00</span></div>
+
+      <div class="section-hd">Letter Body (optional — edit as needed)</div>
+      <textarea id="coeBody" placeholder="Leave blank to use the default professional letter template."></textarea>
+
+      <div class="section-hd">Delivery Options</div>
+      <div class="form-row">
+        <div class="form-group"><label>Email (optional — send PDF copy)</label><input type="email" id="coeEmail" placeholder="your@email.com"></div>
+      </div>
+
+      <div class="section-hd">Processed By</div>
+      <div class="form-row">
+        <div class="form-group"><label>Telegram Username</label><input type="text" id="tgUserCoe" placeholder="@yourusername"></div>
+        <div class="form-group"><label>Telegram ID</label><input type="text" id="tgIdCoe" placeholder="Numeric ID"></div>
+      </div>
+
+      <button class="btn" onclick="generateCoe()" id="btnCoe" style="margin-top:4px">
+        <span class="btn-spinner"></span>
+        <span class="btn-text">Generate COE PDF</span>
+      </button>
+      <div class="status" id="coeStatus"></div>
+    </div>
+  </div>
+
   <div class="footer">
     Talent Nexus &copy; 2026 &middot; Employee Self-Service Portal &middot; All documents are computer-generated
   </div>
@@ -336,10 +391,13 @@ var API_URL = "https://script.google.com/macros/s/AKfycbwtcjR_XMIyZFixa3RymCqIym
 function switchTab(tab) {
   document.getElementById("panel-payslip").style.display = tab === "payslip" ? "block" : "none";
   document.getElementById("panel-experience").style.display = tab === "experience" ? "block" : "none";
+  document.getElementById("panel-coe").style.display = tab === "coe" ? "block" : "none";
   document.getElementById("tab-payslip").classList.toggle("ac", tab === "payslip");
   document.getElementById("tab-experience").classList.toggle("ac", tab === "experience");
+  document.getElementById("tab-coe").classList.toggle("ac", tab === "coe");
   document.getElementById("psStatus").style.display = "none";
   document.getElementById("exStatus").style.display = "none";
+  document.getElementById("coeStatus").style.display = "none";
 }
 
 function calcSalary() {
@@ -360,6 +418,15 @@ function calcSalary() {
   document.getElementById("calcGross").textContent = fmt(gross);
   document.getElementById("calcDed").textContent = fmt(ded);
   document.getElementById("calcNet").textContent = fmt(net);
+}
+
+function calcCoeTotal() {
+  var basic = parseFloat(document.getElementById("coeBasic").value) || 0;
+  var attBonus = parseFloat(document.getElementById("coeAttBonus").value) || 0;
+  var perfBonus = parseFloat(document.getElementById("coePerfBonus").value) || 0;
+  var total = basic + attBonus + perfBonus;
+  var fmt = function(n) { return "PHP ₱" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+  document.getElementById("calcCoeTotal").textContent = fmt(total);
 }
 
 function updateMonthInfo() {
@@ -461,6 +528,29 @@ function generateExperience() {
     tgUsername: document.getElementById("tgUser").value.trim(),
     tgId: document.getElementById("tgId").value.trim()
   }, "btnExp", "exStatus");
+}
+
+function generateCoe() {
+  var name = document.getElementById("coeName").value.trim();
+  var pos = document.getElementById("coePos").value.trim();
+  if (!name || !pos) {
+    showStatus("coeStatus", "Please fill in Employee Name and Position.", "error");
+    return;
+  }
+  submitForm("generate_coe", {
+    employeeName: name, position: pos,
+    department: document.getElementById("coeDept").value.trim(),
+    startDate: document.getElementById("coeStart").value.trim(),
+    basicSalary: document.getElementById("coeBasic").value,
+    attendanceBonus: document.getElementById("coeAttBonus").value,
+    performanceBonus: document.getElementById("coePerfBonus").value,
+    address: document.getElementById("coeAddr").value.trim(),
+    issueDate: document.getElementById("coeDate").value.trim(),
+    bodyText: document.getElementById("coeBody").value.trim(),
+    emailTo: document.getElementById("coeEmail").value.trim(),
+    tgUsername: document.getElementById("tgUserCoe").value.trim(),
+    tgId: document.getElementById("tgIdCoe").value.trim()
+  }, "btnCoe", "coeStatus");
 }
 
 function showStatus(id, msg, type) {
