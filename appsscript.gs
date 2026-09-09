@@ -207,7 +207,7 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
         '</td></tr></table>';
     } else if (docType === "experience") {
       var expP = str(d.position), expS = str(d.shift);
-      var expT = str(d.trainingStart), expO = str(d.officialDate), expA = str(d.address);
+      var expT = str(d.trainingStart), expO = str(d.officialDate), expL = str(d.lastWorkDate), expA = str(d.address);
       docContent = '<table cellpadding="0" cellspacing="0" style="background:#f9f9f9;border:1px solid #eee;border-radius:5px;width:100%;margin:10px 0"><tr><td style="padding:10px 14px">' +
         '<p style="font-size:12px;color:#555;margin:0 0 6px"><b>' + esc(docLabel) + '</b> &bull; ' + today + '</p>' +
         '<table style="width:100%;border-collapse:collapse;font-size:11px">' +
@@ -216,6 +216,7 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
         '<tr><td style="padding:3px 0;color:#888">Shift:</td><td style="padding:3px 0">' + esc(expS) + '</td></tr>' +
         '<tr><td style="padding:3px 0;color:#888">Training Start:</td><td style="padding:3px 0">' + esc(expT) + '</td></tr>' +
         '<tr><td style="padding:3px 0;color:#888">Working Start:</td><td style="padding:3px 0">' + esc(expO) + '</td></tr>' +
+        '<tr><td style="padding:3px 0;color:#888">Last Working Date:</td><td style="padding:3px 0">' + esc(expL) + '</td></tr>' +
         '<tr><td style="padding:3px 0;color:#888">Address:</td><td style="padding:3px 0">' + esc(expA) + '</td></tr>' +
         '</table></td></tr></table>';
     } else {
@@ -434,14 +435,16 @@ function payslipPage(nm,id,dp,ds,pf,pt,pd,bk,ac,ba,al,bo,ot,cm,tx,ep,ins,ln,oh,g
 function generateExperienceHtml(d) {
   var empName = str(d.employeeName), position = str(d.position);
   var shift = str(d.shift), trainStart = str(d.trainingStart);
-  var offDate = str(d.officialDate), address = str(d.address);
+  var offDate = str(d.officialDate), lastDate = str(d.lastWorkDate);
+  var address = str(d.address);
   var certDate = str(d.certDate) || new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"});
   var bodyText = str(d.bodyText);
   var firstName = esc(empName.split(" ")[0]);
 
   if (!empName || !position) return "<h3>Error: Employee Name and Position are required.</h3>";
 
-  var defaultBody = '<p>This is to certify that <b>' + esc(empName) + '</b> was employed with <b>Talent Nexus</b> from <b>' + esc(trainStart || offDate) + '</b>. During their tenure as <b>' + esc(position) + '</b>, they demonstrated outstanding professionalism, strong work ethic, and unwavering commitment to excellence.</p>' +
+  var tenureEnd = lastDate ? (' to <b>' + esc(lastDate) + '</b>') : '';
+  var defaultBody = '<p>This is to certify that <b>' + esc(empName) + '</b> was employed with <b>Talent Nexus</b> from <b>' + esc(trainStart || offDate) + '</b>' + tenureEnd + '. During their tenure as <b>' + esc(position) + '</b>, they demonstrated outstanding professionalism, strong work ethic, and unwavering commitment to excellence.</p>' +
     '<p>' + firstName + ' consistently exceeded performance expectations, collaborated effectively with team members, and contributed meaningfully to organizational objectives. Their conduct, punctuality, and dedication were exemplary throughout their service period.</p>' +
     '<p>We confirm that ' + firstName + ' has satisfactorily discharged all duties and responsibilities. There are no outstanding obligations or pending matters on their part.</p>' +
     '<p>We wholeheartedly recommend ' + firstName + ' for any future position they may pursue and wish them continued success in all professional endeavors.</p>';
@@ -497,6 +500,7 @@ function generateExperienceHtml(d) {
     '<tr><td class="lbl">Shift / Team</td><td>' + esc(shift) + '</td></tr>' +
     '<tr><td class="lbl">Training Start Date</td><td>' + esc(trainStart) + '</td></tr>' +
     '<tr><td class="lbl">Working Start Date</td><td>' + esc(offDate) + '</td></tr>' +
+    '<tr><td class="lbl">Last Working Date</td><td>' + esc(lastDate) + '</td></tr>' +
     '<tr><td class="lbl">Address on Record</td><td>' + esc(address) + '</td></tr>' +
     '</table>' +
 
