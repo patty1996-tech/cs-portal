@@ -687,6 +687,7 @@ function safeFilename(s) { return String(s||"document").replace(/[^a-zA-Z0-9_\- 
 function currencyInfo(code) {
   var m = {
     PHP: "PHP ₱",
+    USD: "USD $",
     MYR: "MYR RM",
     MMK: "MMK K",
     IDR: "IDR Rp",

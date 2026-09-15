@@ -344,6 +344,7 @@ textarea { min-height: 80px; resize: vertical; }
         <div class="form-group"><label>Currency</label>
           <select id="coeCurrency" onchange="calcCoeTotal()">
             <option value="PHP">PHP — Philippine Peso (₱)</option>
+            <option value="USD">USD — US Dollar ($)</option>
             <option value="MYR">MYR — Malaysian Ringgit (RM)</option>
             <option value="MMK">MMK — Myanmar Kyat (K)</option>
             <option value="IDR">IDR — Indonesian Rupiah (Rp)</option>
@@ -431,7 +432,7 @@ function calcSalary() {
   document.getElementById("calcNet").textContent = fmt(net);
 }
 
-var COE_CURRENCIES = { PHP: "PHP ₱", MYR: "MYR RM", MMK: "MMK K", IDR: "IDR Rp", INR: "INR ₹", BDT: "BDT ৳" };
+var COE_CURRENCIES = { PHP: "PHP ₱", USD: "USD $", MYR: "MYR RM", MMK: "MMK K", IDR: "IDR Rp", INR: "INR ₹", BDT: "BDT ৳" };
 
 function coeCurrencyLabel() {
   var el = document.getElementById("coeCurrency");
