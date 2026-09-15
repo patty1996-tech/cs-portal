@@ -224,6 +224,7 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
       var coeS = str(d.startDate), coeA = str(d.address);
       var coeBasic = num(d.basicSalary), coeAtt = num(d.attendanceBonus), coePerf = num(d.performanceBonus);
       var coeTotal = coeBasic + coeAtt + coePerf;
+      var coeCur = currencyInfo(d.currency);
       var fmt3 = function(v){return v.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});};
       docContent = '<table cellpadding="0" cellspacing="0" style="background:#f9f9f9;border:1px solid #eee;border-radius:5px;width:100%;margin:10px 0"><tr><td style="padding:10px 14px">' +
         '<p style="font-size:12px;color:#555;margin:0 0 6px"><b>' + esc(docLabel) + '</b> &bull; ' + today + '</p>' +
@@ -233,10 +234,10 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
         '<tr><td style="padding:3px 0;color:#888">Department:</td><td style="padding:3px 0">' + esc(coeD) + '</td></tr>' +
         '<tr><td style="padding:3px 0;color:#888">Start Date:</td><td style="padding:3px 0">' + esc(coeS) + '</td></tr>' +
         '<tr><td style="padding:3px 0;color:#888">Address:</td><td style="padding:3px 0">' + esc(coeA) + '</td></tr>' +
-        '<tr><td style="padding:3px 0;color:#888">Basic Salary:</td><td style="padding:3px 0">PHP ₱' + fmt3(coeBasic) + '</td></tr>' +
-        (coeAtt > 0 ? '<tr><td style="padding:3px 0;color:#888">Attendance Bonus:</td><td style="padding:3px 0">PHP ₱' + fmt3(coeAtt) + '</td></tr>' : '') +
-        (coePerf > 0 ? '<tr><td style="padding:3px 0;color:#888">Performance Bonus:</td><td style="padding:3px 0">PHP ₱' + fmt3(coePerf) + '</td></tr>' : '') +
-        '<tr style="border-top:1px solid #ddd"><td style="padding:3px 0;color:#1a1a2e;font-weight:700">Total Compensation:</td><td style="padding:3px 0;font-weight:700;color:#1a6b3c">PHP ₱' + fmt3(coeTotal) + '</td></tr>' +
+        '<tr><td style="padding:3px 0;color:#888">Basic Salary:</td><td style="padding:3px 0">' + coeCur + ' ' + fmt3(coeBasic) + '</td></tr>' +
+        (coeAtt > 0 ? '<tr><td style="padding:3px 0;color:#888">Attendance Bonus:</td><td style="padding:3px 0">' + coeCur + ' ' + fmt3(coeAtt) + '</td></tr>' : '') +
+        (coePerf > 0 ? '<tr><td style="padding:3px 0;color:#888">Performance Bonus:</td><td style="padding:3px 0">' + coeCur + ' ' + fmt3(coePerf) + '</td></tr>' : '') +
+        '<tr style="border-top:1px solid #ddd"><td style="padding:3px 0;color:#1a1a2e;font-weight:700">Total Compensation:</td><td style="padding:3px 0;font-weight:700;color:#1a6b3c">' + coeCur + ' ' + fmt3(coeTotal) + '</td></tr>' +
         '</table></td></tr></table>';
     }
 
@@ -533,19 +534,20 @@ function generateCoeHtml(d) {
   var attBonus = num(d.attendanceBonus);
   var perfBonus = num(d.performanceBonus);
   var totalComp = basicSalary + attBonus + perfBonus;
+  var cur = currencyInfo(d.currency);
 
   if (!empName || !position) return "<h3>Error: Employee Name and Position are required.</h3>";
 
   var fmt = function(v){return v.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});};
-  var amt = function(v){return v>0?"PHP ₱"+fmt(v):"—";};
+  var amt = function(v){return v>0?cur+" "+fmt(v):"—";};
 
   var defaultBody =
     '<p>This is to certify that <b>' + esc(empName) + '</b> has been an employee of <b>Talent Nexus</b> since <b>' + esc(startDate) + '</b>, holding the position of <b>' + esc(position) + '</b>' + (department?' in the <b>' + esc(department) + '</b>':'') + '. ' + firstName + ' is entitled to compensation and benefits as follows:</p>' +
     '<p><b>Compensation:</b><br>' +
-    'Basic Salary &mdash; PHP ₱' + fmt(basicSalary) + '<br>' +
-    (attBonus > 0 ? 'Attendance Bonus &mdash; PHP ₱' + fmt(attBonus) + '<br>' : '') +
-    (perfBonus > 0 ? 'Performance Bonus &mdash; PHP ₱' + fmt(perfBonus) + '<br>' : '') +
-    '<b>Total Monthly Compensation &mdash; PHP ₱' + fmt(totalComp) + '</b></p>' +
+    'Basic Salary &mdash; ' + cur + ' ' + fmt(basicSalary) + '<br>' +
+    (attBonus > 0 ? 'Attendance Bonus &mdash; ' + cur + ' ' + fmt(attBonus) + '<br>' : '') +
+    (perfBonus > 0 ? 'Performance Bonus &mdash; ' + cur + ' ' + fmt(perfBonus) + '<br>' : '') +
+    '<b>Total Monthly Compensation &mdash; ' + cur + ' ' + fmt(totalComp) + '</b></p>' +
     '<p>' + firstName + ' has demonstrated the qualities of hard work, good quality performance, and possesses good moral character. ' + firstName + ' has consistently shown dedication and professionalism throughout their tenure with the organization.</p>' +
     '<p>This certification is being issued upon the request of ' + firstName + ' for whatever legal purposes it may serve.</p>';
 
@@ -599,10 +601,10 @@ function generateCoeHtml(d) {
     '<tr><td class="lbl">Position Held</td><td>' + esc(position) + '</td></tr>' +
     '<tr><td class="lbl">Department</td><td>' + esc(department) + '</td></tr>' +
     '<tr><td class="lbl">Start Date</td><td>' + esc(startDate) + '</td></tr>' +
-    '<tr><td class="lbl">Basic Salary</td><td>PHP ₱' + fmt(basicSalary) + '</td></tr>' +
-    (attBonus > 0 ? '<tr><td class="lbl">Attendance Bonus</td><td>PHP ₱' + fmt(attBonus) + '</td></tr>' : '') +
-    (perfBonus > 0 ? '<tr><td class="lbl">Performance Bonus</td><td>PHP ₱' + fmt(perfBonus) + '</td></tr>' : '') +
-    '<tr><td class="lbl">Total Monthly Compensation</td><td><b>PHP ₱' + fmt(totalComp) + '</b></td></tr>' +
+    '<tr><td class="lbl">Basic Salary</td><td>' + cur + ' ' + fmt(basicSalary) + '</td></tr>' +
+    (attBonus > 0 ? '<tr><td class="lbl">Attendance Bonus</td><td>' + cur + ' ' + fmt(attBonus) + '</td></tr>' : '') +
+    (perfBonus > 0 ? '<tr><td class="lbl">Performance Bonus</td><td>' + cur + ' ' + fmt(perfBonus) + '</td></tr>' : '') +
+    '<tr><td class="lbl">Total Monthly Compensation</td><td><b>' + cur + ' ' + fmt(totalComp) + '</b></td></tr>' +
     '<tr><td class="lbl">Address on Record</td><td>' + esc(address) + '</td></tr>' +
     '</table>' +
 
@@ -680,6 +682,19 @@ function str(v) { return String(v||"").trim(); }
 function num(v) { var n=parseFloat(v); return isNaN(n)?0:n; }
 function isValidEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e).trim()); }
 function safeFilename(s) { return String(s||"document").replace(/[^a-zA-Z0-9_\- ]/g,"").replace(/\s+/g,"_").substring(0,80); }
+
+
+function currencyInfo(code) {
+  var m = {
+    PHP: "PHP ₱",
+    MYR: "MYR RM",
+    MMK: "MMK K",
+    IDR: "IDR Rp",
+    INR: "INR ₹",
+    BDT: "BDT ৳"
+  };
+  return m[String(code||"").toUpperCase()] || m.PHP;
+}
 
 function parseDateFlex(s) {
   if (!s) return null;

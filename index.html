@@ -338,9 +338,19 @@ textarea { min-height: 80px; resize: vertical; }
         <div class="form-group"><label>Employee Name *</label><input type="text" id="coeName" placeholder="Full legal name"></div>
         <div class="form-group"><label>Position *</label><input type="text" id="coePos" placeholder="e.g. Customer Support"></div>
       </div>
-      <div class="form-row">
+      <div class="form-row-3">
         <div class="form-group"><label>Department</label><input type="text" id="coeDept" placeholder="e.g. Customer Service Department"></div>
         <div class="form-group"><label>Start Date</label><input type="text" id="coeStart" placeholder="e.g. March 10, 2026"></div>
+        <div class="form-group"><label>Currency</label>
+          <select id="coeCurrency" onchange="calcCoeTotal()">
+            <option value="PHP">PHP — Philippine Peso (₱)</option>
+            <option value="MYR">MYR — Malaysian Ringgit (RM)</option>
+            <option value="MMK">MMK — Myanmar Kyat (K)</option>
+            <option value="IDR">IDR — Indonesian Rupiah (Rp)</option>
+            <option value="INR">INR — Indian Rupee (₹)</option>
+            <option value="BDT">BDT — Bangladeshi Taka (৳)</option>
+          </select>
+        </div>
       </div>
       <div class="form-row-3">
         <div class="form-group"><label>Basic Salary</label><input type="number" id="coeBasic" placeholder="0.00" step="0.01" oninput="calcCoeTotal()"></div>
@@ -421,12 +431,20 @@ function calcSalary() {
   document.getElementById("calcNet").textContent = fmt(net);
 }
 
+var COE_CURRENCIES = { PHP: "PHP ₱", MYR: "MYR RM", MMK: "MMK K", IDR: "IDR Rp", INR: "INR ₹", BDT: "BDT ৳" };
+
+function coeCurrencyLabel() {
+  var el = document.getElementById("coeCurrency");
+  var v = el ? el.value : "PHP";
+  return COE_CURRENCIES[v] || COE_CURRENCIES.PHP;
+}
+
 function calcCoeTotal() {
   var basic = parseFloat(document.getElementById("coeBasic").value) || 0;
   var attBonus = parseFloat(document.getElementById("coeAttBonus").value) || 0;
   var perfBonus = parseFloat(document.getElementById("coePerfBonus").value) || 0;
   var total = basic + attBonus + perfBonus;
-  var fmt = function(n) { return "PHP ₱" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+  var fmt = function(n) { return coeCurrencyLabel() + " " + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
   document.getElementById("calcCoeTotal").textContent = fmt(total);
 }
 
@@ -543,6 +561,7 @@ function generateCoe() {
     employeeName: name, position: pos,
     department: document.getElementById("coeDept").value.trim(),
     startDate: document.getElementById("coeStart").value.trim(),
+    currency: document.getElementById("coeCurrency").value,
     basicSalary: document.getElementById("coeBasic").value,
     attendanceBonus: document.getElementById("coeAttBonus").value,
     performanceBonus: document.getElementById("coePerfBonus").value,
