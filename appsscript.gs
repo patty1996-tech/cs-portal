@@ -64,7 +64,7 @@ function doGet(e) {
 
 function pdfError(msg) {
   return HtmlService.createHtmlOutput(
-    '<!DOCTYPE html><html><body style="font-family:Arial;padding:40px;text-align:center">' +
+    '<!DOCTYPE html><html><head><link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNiIgZmlsbD0iIzFhMWEyZSIvPjx0ZXh0IHg9IjE2IiB5PSIyMi41IiBmb250LWZhbWlseT0iQXJpYWwsSGVsdmV0aWNhLHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIuNSIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiNjOWE4NGMiIHRleHQtYW5jaG9yPSJtaWRkbGUiPlROPC90ZXh0Pjwvc3ZnPg=="></head><body style="font-family:Arial;padding:40px;text-align:center">' +
     '<h3 style="color:#c0392b">Document Unavailable</h3>' +
     '<p style="color:#666">' + esc(msg) + '</p>' +
     '<p style="color:#999;font-size:12px">Tokens expire after 7 days. Please generate a new document from the portal.</p>' +
@@ -118,7 +118,7 @@ function returnPdf(html, filename) {
   try {
     var cleanTitle = filename.replace(/\.pdf$/,"").replace(/_/g," ");
     return HtmlService.createHtmlOutput(
-      '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + esc(cleanTitle) + '</title>' +
+      '<!DOCTYPE html><html><head><meta charset="UTF-8"><link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNiIgZmlsbD0iIzFhMWEyZSIvPjx0ZXh0IHg9IjE2IiB5PSIyMi41IiBmb250LWZhbWlseT0iQXJpYWwsSGVsdmV0aWNhLHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIuNSIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiNjOWE4NGMiIHRleHQtYW5jaG9yPSJtaWRkbGUiPlROPC90ZXh0Pjwvc3ZnPg=="><title>' + esc(cleanTitle) + '</title>' +
       '<style>@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{size:A4;margin:0}}' +
       'body{margin:0;padding:0;font-family:"Segoe UI",Arial,sans-serif;background:#f0f0f0}' +
       '.toolbar{position:fixed;top:0;left:0;right:0;background:#1a1a2e;color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;z-index:999;box-shadow:0 2px 8px rgba(0,0,0,0.3)}' +
@@ -468,22 +468,22 @@ function generateExperienceHtml(d) {
   logRequest("experience", empName, "");
 
   return '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' +
-    '@page{size:A4;margin:14mm 15mm}' +
-    'body{font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;color:#1a1a2e;font-size:10pt;line-height:1.7;margin:0}' +
-    '.hdr{width:100%;background:#1a1a2e;padding:10px 16px}' +
+    '@page{size:A4;margin:10mm 12mm}' +
+    'body{font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;color:#1a1a2e;font-size:9.5pt;line-height:1.45;margin:0}' +
+    '.hdr{width:100%;background:#1a1a2e;padding:8px 14px}' +
     '.hdr-tbl{width:100%}.hdr-tbl td{padding:2px 8px}' +
     '.hdr-logo{width:30px;height:30px;background:#c9a84c;text-align:center;color:#fff;font-weight:900;font-size:13px}' +
     '.hdr-co{color:#fff;font-size:12pt;font-weight:700;letter-spacing:0.5px}' +
     '.hdr-tag{color:#c9a84c;font-size:6pt;text-transform:uppercase;letter-spacing:1.5px}' +
-    '.title{text-align:center;font-size:13pt;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:14px 0 2px}' +
-    '.line{width:50px;height:2px;background:#c9a84c;margin:0 auto 12px}' +
-    '.ref{font-size:7pt;color:#999;margin-bottom:8px}' +
-    '.drow{text-align:right;font-size:8.5pt;margin-bottom:8px}' +
-    '.to{font-size:8.5pt;font-weight:700;margin-bottom:10px}' +
-    '.body-text{font-size:10pt;text-align:justify;margin-bottom:8px;line-height:1.9}' +
-    '.body-text p{margin:0 0 14px;text-indent:0}' +
-    '.dtbl{width:100%;border-collapse:collapse;border:1px solid #ddd;margin:12px 0}' +
-    '.dtbl td{padding:4px 10px;font-size:8pt;border:1px solid #eee}' +
+    '.title{text-align:center;font-size:13pt;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:8px 0 2px}' +
+    '.line{width:50px;height:2px;background:#c9a84c;margin:0 auto 8px}' +
+    '.ref{font-size:7pt;color:#999;margin-bottom:5px}' +
+    '.drow{text-align:right;font-size:8.5pt;margin-bottom:5px}' +
+    '.to{font-size:8.5pt;font-weight:700;margin-bottom:6px}' +
+    '.body-text{font-size:9.5pt;text-align:justify;margin-bottom:6px;line-height:1.55}' +
+    '.body-text p{margin:0 0 8px;text-indent:0}' +
+    '.dtbl{width:100%;border-collapse:collapse;border:1px solid #ddd;margin:8px 0}' +
+    '.dtbl td{padding:3px 8px;font-size:7.8pt;border:1px solid #eee}' +
     '.dtbl td.lbl{background:#f8f8f8;font-weight:600;color:#555;width:28%}' +
     '.sig{margin-top:26px}' +
     '.sig-sign{font-family:"Segoe Script","Brush Script MT","Great Vibes",cursive;font-size:16pt;color:#1a1a2e;margin-bottom:4px}' +
@@ -491,11 +491,11 @@ function generateExperienceHtml(d) {
     '.sig-name{font-weight:700;font-size:9.5pt}' +
     '.sig-role{font-size:7.5pt;color:#666}' +
     '.sig-hr{font-size:7.5pt;color:#c9a84c;font-weight:600;margin-top:1px}' +
-    '.sig-tbl{border-collapse:collapse;margin-top:26px}' +
+    '.sig-tbl{border-collapse:collapse;margin-top:12px}' +
     '.sig-photo{padding:0 14px 0 0;vertical-align:middle}' +
     '.sig-photo img{display:block;border-radius:50%}' +
     '.sig-text{vertical-align:middle}' +
-    '.ft{margin-top:20px;border-top:1px solid #ddd;padding-top:6px;text-align:center;font-size:6.5pt;color:#aaa}' +
+    '.ft{margin-top:10px;border-top:1px solid #ddd;padding-top:4px;text-align:center;font-size:6.5pt;color:#aaa}' +
     '</style></head><body>' +
 
     '<table class="hdr-tbl"><tr>' +
@@ -523,12 +523,12 @@ function generateExperienceHtml(d) {
     '</table>' +
 
         '<table class="sig-tbl"><tr>' +
-    '<td class="sig-photo"><img src="' + HR_SIG_PHOTO + '" width="84" height="84" alt="' + HR_NAME + '"></td>' +
+    '<td class="sig-photo"><img src="' + HR_SIG_PHOTO + '" width="64" height="64" alt="' + HR_NAME + '"></td>' +
     '<td class="sig-text">' +
     '<div class="sig-sign">' + HR_NAME + '</div>' +
     '<div class="sig-line"></div>' +
     '<div class="sig-name">' + HR_NAME + '</div>' +
-    '<div class="sig-role">Human Resources Representative</div>' +
+    '<div class="sig-role">HR Manager - Consultant</div>' +
     '<div class="sig-hr">TALENT NEXUS</div>' +
     '</td>' +
     '</tr></table>' +
@@ -576,22 +576,22 @@ function generateCoeHtml(d) {
   logRequest("coe", empName, "");
 
   return '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' +
-    '@page{size:A4;margin:14mm 15mm}' +
-    'body{font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;color:#1a1a2e;font-size:10pt;line-height:1.7;margin:0}' +
-    '.hdr{width:100%;background:#1a1a2e;padding:10px 16px}' +
+    '@page{size:A4;margin:10mm 12mm}' +
+    'body{font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;color:#1a1a2e;font-size:9.5pt;line-height:1.45;margin:0}' +
+    '.hdr{width:100%;background:#1a1a2e;padding:8px 14px}' +
     '.hdr-tbl{width:100%}.hdr-tbl td{padding:2px 8px}' +
     '.hdr-logo{width:30px;height:30px;background:#c9a84c;text-align:center;color:#fff;font-weight:900;font-size:13px}' +
     '.hdr-co{color:#fff;font-size:12pt;font-weight:700;letter-spacing:0.5px}' +
     '.hdr-tag{color:#c9a84c;font-size:6pt;text-transform:uppercase;letter-spacing:1.5px}' +
-    '.title{text-align:center;font-size:13pt;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:14px 0 2px}' +
-    '.line{width:50px;height:2px;background:#c9a84c;margin:0 auto 12px}' +
-    '.ref{font-size:7pt;color:#999;margin-bottom:8px}' +
-    '.drow{text-align:right;font-size:8.5pt;margin-bottom:8px}' +
-    '.to{font-size:8.5pt;font-weight:700;margin-bottom:10px}' +
-    '.body-text{font-size:10pt;text-align:justify;margin-bottom:8px;line-height:1.9}' +
-    '.body-text p{margin:0 0 14px;text-indent:0}' +
-    '.dtbl{width:100%;border-collapse:collapse;border:1px solid #ddd;margin:12px 0}' +
-    '.dtbl td{padding:4px 10px;font-size:8pt;border:1px solid #eee}' +
+    '.title{text-align:center;font-size:13pt;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:8px 0 2px}' +
+    '.line{width:50px;height:2px;background:#c9a84c;margin:0 auto 8px}' +
+    '.ref{font-size:7pt;color:#999;margin-bottom:5px}' +
+    '.drow{text-align:right;font-size:8.5pt;margin-bottom:5px}' +
+    '.to{font-size:8.5pt;font-weight:700;margin-bottom:6px}' +
+    '.body-text{font-size:9.5pt;text-align:justify;margin-bottom:6px;line-height:1.55}' +
+    '.body-text p{margin:0 0 8px;text-indent:0}' +
+    '.dtbl{width:100%;border-collapse:collapse;border:1px solid #ddd;margin:8px 0}' +
+    '.dtbl td{padding:3px 8px;font-size:7.8pt;border:1px solid #eee}' +
     '.dtbl td.lbl{background:#f8f8f8;font-weight:600;color:#555;width:28%}' +
     '.sig{margin-top:26px}' +
     '.sig-sign{font-family:"Segoe Script","Brush Script MT","Great Vibes",cursive;font-size:16pt;color:#1a1a2e;margin-bottom:4px}' +
@@ -599,11 +599,11 @@ function generateCoeHtml(d) {
     '.sig-name{font-weight:700;font-size:9.5pt}' +
     '.sig-role{font-size:7.5pt;color:#666}' +
     '.sig-hr{font-size:7.5pt;color:#c9a84c;font-weight:600;margin-top:1px}' +
-    '.sig-tbl{border-collapse:collapse;margin-top:26px}' +
+    '.sig-tbl{border-collapse:collapse;margin-top:12px}' +
     '.sig-photo{padding:0 14px 0 0;vertical-align:middle}' +
     '.sig-photo img{display:block;border-radius:50%}' +
     '.sig-text{vertical-align:middle}' +
-    '.ft{margin-top:20px;border-top:1px solid #ddd;padding-top:6px;text-align:center;font-size:6.5pt;color:#aaa}' +
+    '.ft{margin-top:10px;border-top:1px solid #ddd;padding-top:4px;text-align:center;font-size:6.5pt;color:#aaa}' +
     '</style></head><body>' +
 
     '<table class="hdr-tbl"><tr>' +
@@ -633,12 +633,12 @@ function generateCoeHtml(d) {
     '</table>' +
 
         '<table class="sig-tbl"><tr>' +
-    '<td class="sig-photo"><img src="' + HR_SIG_PHOTO + '" width="84" height="84" alt="' + HR_NAME + '"></td>' +
+    '<td class="sig-photo"><img src="' + HR_SIG_PHOTO + '" width="64" height="64" alt="' + HR_NAME + '"></td>' +
     '<td class="sig-text">' +
     '<div class="sig-sign">' + HR_NAME + '</div>' +
     '<div class="sig-line"></div>' +
     '<div class="sig-name">' + HR_NAME + '</div>' +
-    '<div class="sig-role">Human Resources Representative</div>' +
+    '<div class="sig-role">HR Manager - Consultant</div>' +
     '<div class="sig-hr">TALENT NEXUS</div>' +
     '</td>' +
     '</tr></table>' +
