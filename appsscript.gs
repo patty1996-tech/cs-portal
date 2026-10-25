@@ -4,6 +4,7 @@
 var SHEET_ID = "1n6fDjRCi17yp0KQ9lP29ARtqJVg0V_YgV_l9m4FjiCw";
 var HR_NAME = "Hannah Cortez";
 var HR_EMAIL = "hr@talentnexus.com";
+var HR_REPLY_TO = "HannahCortez@gmail.com";
 var CO_WEBSITE = "www.talentnexus.com";
 var CO_ADDRESS_UK = "Suite 10 & 11, The Sanctuary, 23 Oak Hill Grove, Surbiton, Surrey KT6 6DU, United Kingdom";
 var CO_ADDRESS_TH = "The Offices at CentralWorld, 999/9 Rama I Road, 28th Floor, Pathum Wan, Bangkok 10330, Thailand";
@@ -276,8 +277,8 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
       subject: docLabel + " — Talent Nexus",
       htmlBody: htmlBody,
       body: plainBody,
-      name: "Talent Nexus HR",
-      replyTo: HR_EMAIL
+      name: HR_NAME,
+      replyTo: HR_REPLY_TO
     });
 
     try {
