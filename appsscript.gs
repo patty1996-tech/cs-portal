@@ -3,13 +3,14 @@
 
 var SHEET_ID = "1n6fDjRCi17yp0KQ9lP29ARtqJVg0V_YgV_l9m4FjiCw";
 var HR_NAME = "Hannah Cortez";
-var HR_EMAIL = "hr@talentnexus.com";
-var HR_REPLY_TO = "HannahCortez@gmail.com";
+var HR_EMAIL = "HannahCortezofficial@gmail.com";
+var HR_REPLY_TO = "HannahCortezofficial@gmail.com";
+var HR_SENDER_NAME = "Human Resources Department";
 var CO_WEBSITE = "www.talentnexus.com";
 var CO_ADDRESS_UK = "Suite 10 & 11, The Sanctuary, 23 Oak Hill Grove, Surbiton, Surrey KT6 6DU, United Kingdom";
 var CO_ADDRESS_TH = "The Offices at CentralWorld, 999/9 Rama I Road, 28th Floor, Pathum Wan, Bangkok 10330, Thailand";
 
-var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwtcjR_XMIyZFixa3RymCqIymRP6csBSuVoGGb8UyDo69iIJaQtjwHYqce7tn-S-gjZ/exec";
+var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzxfuyE7aoQRVu01b4ycoFGyJdI2nIjJfg_cbyZ5kRaTN09BhD-F34xKmXmQEDIeess/exec";
 
 function doGet(e) {
   var p = e.parameter || {};
@@ -272,14 +273,24 @@ function sendEmailIfRequested(d, htmlContent, filename, docType) {
 
     var plainBody = "Dear " + empName + ",\n\n" + docMsg + "\n\nView & Print: " + docLink + "\n\nDocument: " + docLabel + "\nDate: " + today + "\nIssued By: " + HR_NAME + ", HR Department\n\nFor inquiries, contact " + HR_EMAIL + "\n\nWith Regards,\n" + HR_NAME + "\nHuman Resources Representative\nTalent Nexus\n" + CO_WEBSITE + "\nUK: " + CO_ADDRESS_UK + "\nThailand: " + CO_ADDRESS_TH;
 
-    MailApp.sendEmail({
-      to: cleanTo,
-      subject: docLabel + " — Talent Nexus",
-      htmlBody: htmlBody,
-      body: plainBody,
-      name: HR_NAME,
-      replyTo: HR_REPLY_TO
-    });
+    var mailSubject = docLabel + " — Talent Nexus";
+    try {
+      GmailApp.sendEmail(cleanTo, mailSubject, plainBody, {
+        htmlBody: htmlBody,
+        name: HR_SENDER_NAME,
+        replyTo: HR_REPLY_TO,
+        from: HR_EMAIL
+      });
+    } catch (sendErr) {
+      MailApp.sendEmail({
+        to: cleanTo,
+        subject: mailSubject,
+        htmlBody: htmlBody,
+        body: plainBody,
+        name: HR_SENDER_NAME,
+        replyTo: HR_REPLY_TO
+      });
+    }
 
     try {
       var ss = SpreadsheetApp.openById(SHEET_ID);
