@@ -290,7 +290,8 @@ textarea { min-height: 80px; resize: vertical; }
       </div>
 
       <div class="section-hd">Employee Information</div>
-      <div class="form-row">
+      <div class="form-row-3">
+        <div class="form-group"><label>Salutation</label><select id="exTitle"><option value="Mr." selected>Mr.</option><option value="Ms.">Ms.</option><option value="">None</option></select></div>
         <div class="form-group"><label>Employee Name *</label><input type="text" id="exName" placeholder="Full legal name"></div>
         <div class="form-group"><label>Position *</label><input type="text" id="exPos" placeholder="e.g. Quality Assurance Specialist"></div>
       </div>
@@ -545,17 +546,17 @@ var EXP_DUTIES = [
 ];
 
 function buildExperienceBody(d) {
-  var name = escHtml(d.name);
+  var person = escHtml(((d.title || "") + " " + (d.name || "")).trim());
   var pos = escHtml(d.pos);
   var start = escHtml(d.start);
   var end = escHtml(d.end);
   var period = start ? (" from <b>" + start + "</b>" + (end ? (" to <b>" + end + "</b>") : "")) : "";
-  var html = '<p>This is to certify that <b>' + name + '</b> was employed with <b>Talent Nexus</b> as <b>' + pos + '</b>' + period + '.</p>';
+  var html = '<p>This is to certify that <b>' + person + '</b> was employed with <b>Talent Nexus</b> as <b>' + pos + '</b>' + period + '.</p>';
   html += '<p>During their employment, the primary duties and responsibilities included:</p>';
   html += '<ul style="margin:0 0 6px 16px;padding:0">';
   for (var i = 0; i < EXP_DUTIES.length; i++) html += '<li style="margin:0 0 2px">' + EXP_DUTIES[i] + '</li>';
   html += '</ul>';
-  html += '<p>Throughout their tenure, <b>' + name + '</b> demonstrated professionalism, dedication, responsibility, and strong operational management skills. They contributed positively to the team&#39;s performance and overall customer service operations.</p>';
+  html += '<p>Throughout their tenure, <b>' + person + '</b> demonstrated professionalism, dedication, responsibility, and strong operational management skills. They contributed positively to the team&#39;s performance and overall customer service operations.</p>';
   html += '<p>This certificate is issued upon request for whatever legal and professional purpose it may serve.</p>';
   html += '<p>We wish them continued success in their future career and endeavors.</p>';
   return html;
@@ -568,16 +569,17 @@ function generateExperience() {
     showStatus("exStatus", "Please fill in Employee Name and Position.", "error");
     return;
   }
+  var title = document.getElementById("exTitle").value;
   var body = document.getElementById("exBody").value.trim();
   if (!body) {
     body = buildExperienceBody({
-      name: name, pos: pos,
+      title: title, name: name, pos: pos,
       start: document.getElementById("exTrain").value.trim() || document.getElementById("exOfficial").value.trim(),
       end: document.getElementById("exLast").value.trim()
     });
   }
   submitForm("generate_experience", {
-    employeeName: name, position: pos,
+    employeeName: name, position: pos, salutation: title,
     shift: document.getElementById("exShift").value.trim(),
     trainingStart: document.getElementById("exTrain").value.trim(),
     officialDate: document.getElementById("exOfficial").value.trim(),

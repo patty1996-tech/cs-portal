@@ -457,9 +457,11 @@ function generateExperienceHtml(d) {
 
   if (!empName || !position) return "<h3>Error: Employee Name and Position are required.</h3>";
 
+  var salutation = str(d.salutation);
+  var personName = (salutation ? esc(salutation) + ' ' : '') + esc(empName);
   var tenureStart = trainStart || offDate;
   var tenureEnd = lastDate ? (' to <b>' + esc(lastDate) + '</b>') : '';
-  var defaultBody = '<p>This is to certify that <b>' + esc(empName) + '</b> was employed with <b>Talent Nexus</b> as <b>' + esc(position) + '</b>' + (tenureStart ? (' from <b>' + esc(tenureStart) + '</b>') : '') + tenureEnd + '.</p>' +
+  var defaultBody = '<p>This is to certify that <b>' + personName + '</b> was employed with <b>Talent Nexus</b> as <b>' + esc(position) + '</b>' + (tenureStart ? (' from <b>' + esc(tenureStart) + '</b>') : '') + tenureEnd + '.</p>' +
     '<p>During their employment, the primary duties and responsibilities included:</p>' +
     '<ul style="margin:0 0 6px 16px;padding:0">' +
     '<li style="margin:0 0 2px">Managing multiple customer support conversations through non-voice live chat channels.</li>' +
@@ -470,7 +472,7 @@ function generateExperienceHtml(d) {
     '<li style="margin:0 0 2px">Supporting customer issue resolution while ensuring service quality and operational efficiency.</li>' +
     '<li style="margin:0 0 2px">Providing professional customer assistance and maintaining effective communication to ensure customer satisfaction.</li>' +
     '</ul>' +
-    '<p>Throughout their tenure, <b>' + esc(empName) + '</b> demonstrated professionalism, dedication, responsibility, and strong operational management skills. They contributed positively to the team&#39;s performance and overall customer service operations.</p>' +
+    '<p>Throughout their tenure, <b>' + personName + '</b> demonstrated professionalism, dedication, responsibility, and strong operational management skills. They contributed positively to the team&#39;s performance and overall customer service operations.</p>' +
     '<p>This certificate is issued upon request for whatever legal and professional purpose it may serve.</p>' +
     '<p>We wish them continued success in their future career and endeavors.</p>';
 
