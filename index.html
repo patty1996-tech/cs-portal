@@ -530,12 +530,51 @@ function generatePayslip() {
   }, "btnPayslip", "psStatus");
 }
 
+function escHtml(s) {
+  return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+var EXP_DUTIES = [
+  "Managing multiple customer support conversations through non-voice live chat channels.",
+  "Handling customer financial inquiries, payment-related issues, and transaction concerns.",
+  "Assisting with Know Your Customer (KYC) verification and customer information validation.",
+  "Monitoring team performance, attendance, and key operational performance indicators (KPIs).",
+  "Preparing and maintaining daily and monthly operational reports.",
+  "Supporting customer issue resolution while ensuring service quality and operational efficiency.",
+  "Providing professional customer assistance and maintaining effective communication to ensure customer satisfaction."
+];
+
+function buildExperienceBody(d) {
+  var name = escHtml(d.name);
+  var pos = escHtml(d.pos);
+  var start = escHtml(d.start);
+  var end = escHtml(d.end);
+  var period = start ? (" from <b>" + start + "</b>" + (end ? (" to <b>" + end + "</b>") : "")) : "";
+  var html = '<p>This is to certify that <b>' + name + '</b> was employed with <b>Talent Nexus</b> as <b>' + pos + '</b>' + period + '.</p>';
+  html += '<p>During their employment, the primary duties and responsibilities included:</p>';
+  html += '<ul style="margin:0 0 6px 16px;padding:0">';
+  for (var i = 0; i < EXP_DUTIES.length; i++) html += '<li style="margin:0 0 2px">' + EXP_DUTIES[i] + '</li>';
+  html += '</ul>';
+  html += '<p>Throughout their tenure, <b>' + name + '</b> demonstrated professionalism, dedication, responsibility, and strong operational management skills. They contributed positively to the team&#39;s performance and overall customer service operations.</p>';
+  html += '<p>This certificate is issued upon request for whatever legal and professional purpose it may serve.</p>';
+  html += '<p>We wish them continued success in their future career and endeavors.</p>';
+  return html;
+}
+
 function generateExperience() {
   var name = document.getElementById("exName").value.trim();
   var pos = document.getElementById("exPos").value.trim();
   if (!name || !pos) {
     showStatus("exStatus", "Please fill in Employee Name and Position.", "error");
     return;
+  }
+  var body = document.getElementById("exBody").value.trim();
+  if (!body) {
+    body = buildExperienceBody({
+      name: name, pos: pos,
+      start: document.getElementById("exTrain").value.trim() || document.getElementById("exOfficial").value.trim(),
+      end: document.getElementById("exLast").value.trim()
+    });
   }
   submitForm("generate_experience", {
     employeeName: name, position: pos,
@@ -545,7 +584,7 @@ function generateExperience() {
     lastWorkDate: document.getElementById("exLast").value.trim(),
     address: document.getElementById("exAddr").value.trim(),
     certDate: document.getElementById("exDate").value.trim(),
-    bodyText: document.getElementById("exBody").value.trim(),
+    bodyText: body,
     emailTo: document.getElementById("exEmail").value.trim(),
     tgUsername: document.getElementById("tgUser").value.trim(),
     tgId: document.getElementById("tgId").value.trim()

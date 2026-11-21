@@ -457,11 +457,22 @@ function generateExperienceHtml(d) {
 
   if (!empName || !position) return "<h3>Error: Employee Name and Position are required.</h3>";
 
+  var tenureStart = trainStart || offDate;
   var tenureEnd = lastDate ? (' to <b>' + esc(lastDate) + '</b>') : '';
-  var defaultBody = '<p>This is to certify that <b>' + esc(empName) + '</b> was employed with <b>Talent Nexus</b> from <b>' + esc(trainStart || offDate) + '</b>' + tenureEnd + '. During their tenure as <b>' + esc(position) + '</b>, they demonstrated outstanding professionalism, strong work ethic, and unwavering commitment to excellence.</p>' +
-    '<p>' + firstName + ' consistently exceeded performance expectations, collaborated effectively with team members, and contributed meaningfully to organizational objectives. Their conduct, punctuality, and dedication were exemplary throughout their service period.</p>' +
-    '<p>We confirm that ' + firstName + ' has satisfactorily discharged all duties and responsibilities. There are no outstanding obligations or pending matters on their part.</p>' +
-    '<p>We wholeheartedly recommend ' + firstName + ' for any future position they may pursue and wish them continued success in all professional endeavors.</p>';
+  var defaultBody = '<p>This is to certify that <b>' + esc(empName) + '</b> was employed with <b>Talent Nexus</b> as <b>' + esc(position) + '</b>' + (tenureStart ? (' from <b>' + esc(tenureStart) + '</b>') : '') + tenureEnd + '.</p>' +
+    '<p>During their employment, the primary duties and responsibilities included:</p>' +
+    '<ul style="margin:0 0 6px 16px;padding:0">' +
+    '<li style="margin:0 0 2px">Managing multiple customer support conversations through non-voice live chat channels.</li>' +
+    '<li style="margin:0 0 2px">Handling customer financial inquiries, payment-related issues, and transaction concerns.</li>' +
+    '<li style="margin:0 0 2px">Assisting with Know Your Customer (KYC) verification and customer information validation.</li>' +
+    '<li style="margin:0 0 2px">Monitoring team performance, attendance, and key operational performance indicators (KPIs).</li>' +
+    '<li style="margin:0 0 2px">Preparing and maintaining daily and monthly operational reports.</li>' +
+    '<li style="margin:0 0 2px">Supporting customer issue resolution while ensuring service quality and operational efficiency.</li>' +
+    '<li style="margin:0 0 2px">Providing professional customer assistance and maintaining effective communication to ensure customer satisfaction.</li>' +
+    '</ul>' +
+    '<p>Throughout their tenure, <b>' + esc(empName) + '</b> demonstrated professionalism, dedication, responsibility, and strong operational management skills. They contributed positively to the team&#39;s performance and overall customer service operations.</p>' +
+    '<p>This certificate is issued upon request for whatever legal and professional purpose it may serve.</p>' +
+    '<p>We wish them continued success in their future career and endeavors.</p>';
 
   var refNo = "TN/HR/EXP/" + new Date().getFullYear() + "/" + Math.floor(Math.random()*9000+1000);
 
@@ -510,7 +521,7 @@ function generateExperienceHtml(d) {
     '<div class="drow"><b>Date:</b> ' + esc(certDate) + '</div>' +
     '<div class="to">TO WHOM IT MAY CONCERN</div>' +
 
-    '<div class="body-text">' + (bodyText || defaultBody) + '</div>' +
+    bodyBlock(bodyText, defaultBody) +
 
     '<table class="dtbl">' +
     '<tr><td class="lbl">Employee Name</td><td>' + esc(empName) + '</td></tr>' +
@@ -618,7 +629,7 @@ function generateCoeHtml(d) {
     '<div class="drow"><b>Issued:</b> ' + esc(issueDate) + '</div>' +
     '<div class="to">TO WHOM IT MAY CONCERN</div>' +
 
-    '<div class="body-text">' + (bodyText || defaultBody) + '</div>' +
+    bodyBlock(bodyText, defaultBody) +
 
     '<table class="dtbl">' +
     '<tr><td class="lbl">Employee Name</td><td>' + esc(empName) + '</td></tr>' +
@@ -674,7 +685,7 @@ function storeDocumentToken(docType, formData) {
     }
     var payload = JSON.stringify(formData);
     s.appendRow([token, docType, payload, new Date()]);
-    cleanupOldTokens(s);
+    maybeCleanupTokens(s);
   } catch (e) {}
   return token;
 }
@@ -683,6 +694,30 @@ function generateToken() {
   var ts = new Date().getTime().toString(36);
   var rand = Math.random().toString(36).substring(2, 7);
   return "TK-" + ts + "-" + rand;
+}
+
+function maybeCleanupTokens(sheet) {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var last = Number(props.getProperty("lastTokenCleanup") || 0);
+    var now = Date.now();
+    if (now - last < 24 * 60 * 60 * 1000) return;
+    props.setProperty("lastTokenCleanup", String(now));
+    cleanupOldTokens(sheet);
+  } catch (e) {}
+}
+
+function keepAlive() { return "ok"; }
+
+function installKeepAliveTrigger() {
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === "keepAlive") {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+  ScriptApp.newTrigger("keepAlive").timeBased().everyMinutes(5).create();
+  return "Keep-alive trigger installed (every 5 min).";
 }
 
 function cleanupOldTokens(sheet) {
@@ -706,6 +741,18 @@ function cleanupOldTokens(sheet) {
 // ======== HELPERS ========
 function esc(s) { return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function str(v) { return String(v||"").trim(); }
+function hasVisibleText(v) {
+  var t = String(v||"")
+    .replace(/<[^>]*>/g,"")
+    .replace(/&nbsp;/gi," ")
+    .replace(/&[a-z#0-9]+;/gi,"x")
+    .replace(/[\s\u200b-\u200d\ufeff]/g,"");
+  return t.length > 0;
+}
+function bodyBlock(bodyText, defaultBody) {
+  var custom = str(bodyText);
+  return '<div class="body-text">' + (hasVisibleText(custom) ? custom : defaultBody) + '</div>';
+}
 function num(v) { var n=parseFloat(v); return isNaN(n)?0:n; }
 function isValidEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e).trim()); }
 function safeFilename(s) { return String(s||"document").replace(/[^a-zA-Z0-9_\- ]/g,"").replace(/\s+/g,"_").substring(0,80); }
